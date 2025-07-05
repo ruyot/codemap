@@ -132,14 +132,37 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
   }, [setNodes, mouseMode])
 
   const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault()
+    event.stopPropagation()
+    
     if (mouseMode !== "selection") return
 
     // Only navigate for file nodes, not directories
     if (node.data.type === 'file') {
-      console.log("Navigating to module:", node.id, node.data.filePath)
-      router.push(`/module/${node.id}`)
+      console.log("Double-clicking node:", node.id, "Type:", node.data.type, "FilePath:", node.data.filePath)
+      console.log("Navigating to module:", node.id)
+      
+      // Add visual feedback
+      setNodes((nodes: Node[]) =>
+        nodes.map((n: Node) => ({
+          ...n,
+          style: {
+            ...n.style,
+            border: n.id === node.id ? "3px solid #10b981" : "1px solid #1e40af",
+            boxShadow: n.id === node.id ? "0 0 30px rgba(16, 185, 129, 0.8)" : "none",
+            transform: n.id === node.id ? "scale(1.05)" : "scale(1)",
+          },
+        }))
+      )
+      
+      // Navigate after a brief delay to show the visual feedback
+      setTimeout(() => {
+        router.push(`/module/${node.id}`)
+      }, 200)
+    } else {
+      console.log("Double-clicked directory node:", node.id, "- not navigating")
     }
-  }, [router, mouseMode])
+  }, [router, mouseMode, setNodes])
 
   // Update nodes when repo changes
   useEffect(() => {

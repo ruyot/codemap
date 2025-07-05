@@ -1,15 +1,54 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabaseClient"
 import LandingPage from "@/components/landing-page"
 import CyberpunkAppShell from "@/components/cyberpunk-app-shell"
 
 export default function Home() {
-  const [isSignedIn, setIsSignedIn] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  if (isSignedIn) {
-    return <CyberpunkAppShell onSignOut={() => setIsSignedIn(false)} />
+  useEffect(() => {
+    // Get initial session
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setUser(session?.user ?? null)
+      setLoading(false)
+    }
+
+    getSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
   }
 
-  return <LandingPage onSignIn={() => setIsSignedIn(true)} />
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (user) {
+    return <CyberpunkAppShell onSignOut={handleSignOut} />
+  }
+
+  return <LandingPage onSignIn={() => {}} />
 }

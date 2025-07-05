@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import CodeCanvas from "@/components/code-canvas"
 import GitCommandPalette from "@/components/git-command-palette"
+import TerminalComponent from "@/components/terminal"
 import { 
   Folder, 
   GitBranch, 
@@ -107,6 +108,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   const [isAIEnabled, setIsAIEnabled] = useState(true)
   const [notifications, setNotifications] = useState(3)
   const [user, setUser] = useState<any>(null)
+  const [showTerminal, setShowTerminal] = useState(false)
 
   useEffect(() => {
     const session = supabase.auth.getSession().then(({ data: { session } }) => {
@@ -187,10 +189,21 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg flex items-center justify-center animate-pulse">
-                <Code2 className="h-5 w-5 text-white" />
+                <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  {/* Black Widow Spider */}
+                  <ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/>
+                  <circle cx="12" cy="10" r="2.5" fill="currentColor"/>
+                  <circle cx="10.5" cy="9" r="0.5" fill="white"/>
+                  <circle cx="13.5" cy="9" r="0.5" fill="white"/>
+                  {/* Legs */}
+                  <path d="M8 8 L4 4 M8 10 L3 10 M8 12 L4 16 M8 14 L5 18" stroke="currentColor" strokeWidth="1" fill="none"/>
+                  <path d="M16 8 L20 4 M16 10 L21 10 M16 12 L20 16 M16 14 L19 18" stroke="currentColor" strokeWidth="1" fill="none"/>
+                  {/* Red hourglass marking */}
+                  <path d="M10 14 L12 16 L14 14 L12 12 Z" fill="#dc2626"/>
+                </svg>
               </div>
               <h1 className="text-xl font-extrabold bg-gradient-to-r from-pink-400 via-purple-400 to-pink-500 bg-clip-text text-transparent animate-text-flicker">
-                Code Map
+                Web
               </h1>
             </div>
             
@@ -321,7 +334,10 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             <TabsContent value="tools" className="flex-1 m-0">
               <ScrollArea className="h-full p-4">
                 <div className="space-y-3">
-                  <Button className="w-full justify-start bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600">
+                  <Button 
+                    onClick={() => setShowTerminal(true)}
+                    className="w-full justify-start bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600"
+                  >
                     <Terminal className="h-4 w-4 mr-2" />
                     Terminal
                   </Button>
@@ -329,9 +345,12 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                     <Search className="h-4 w-4 mr-2" />
                     Global Search
                   </Button>
-                  <Button className="w-full justify-start bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600">
+                  <Button 
+                    onClick={() => setShowCommandPalette(true)}
+                    className="w-full justify-start bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600"
+                  >
                     <GitBranch className="h-4 w-4 mr-2" />
-                    Git Graph
+                    Git Commands
                   </Button>
                   <Button className="w-full justify-start bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600">
                     <Settings className="h-4 w-4 mr-2" />
@@ -444,6 +463,11 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
           onOpenChange={setShowCommandPalette}
           selectedRepo={selectedRepo}
         />
+      )}
+
+      {/* Terminal */}
+      {showTerminal && (
+        <TerminalComponent onClose={() => setShowTerminal(false)} />
       )}
     </div>
   )
