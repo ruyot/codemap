@@ -1,108 +1,5 @@
 "use client"
 
-import React, { useCallback, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import {
-  ReactFlow,
-  MiniMap,
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  type Connection,
-  type Node,
-} from "@xyflow/react"
-import "@xyflow/react/dist/style.css"
-import { ModuleNode } from "@/types"
-
-interface CodeCanvasProps {
-  selectedRepo: {
-    name: string
-    branch: string
-    status: string
-  }
-}
-
-// Structured module mapping
-const moduleNodes: ModuleNode[] = [
-  {
-    id: "1",
-    label: "App.tsx",
-    filePath: "App.tsx",
-    type: "file",
-    language: "typescript",
-    size: 1024
-  },
-  {
-    id: "2",
-    label: "components/",
-    filePath: "components",
-    type: "directory",
-    size: 0
-  },
-  {
-    id: "3",
-    label: "utils/",
-    filePath: "utils",
-    type: "directory",
-    size: 0
-  },
-  {
-    id: "4",
-    label: "Header.tsx",
-    filePath: "components/Header.tsx",
-    type: "file",
-    language: "typescript",
-    size: 2048
-  },
-  {
-    id: "5",
-    label: "Footer.tsx",
-    filePath: "components/Footer.tsx",
-    type: "file",
-    language: "typescript",
-    size: 1536
-  }
-]
-
-const generateNodes = (repoName: string, modules: ModuleNode[]): Node[] => {
-  const positions = [
-    { x: 100, y: 100 },
-    { x: 300, y: 100 },
-    { x: 500, y: 100 },
-    { x: 200, y: 250 },
-    { x: 400, y: 250 }
-  ]
-
-  return modules.map((module, index) => ({
-    id: module.id,
-    position: positions[index] || { x: 100 + (index * 150), y: 100 + Math.floor(index / 3) * 150 },
-    data: { 
-      label: `${repoName}/${module.label}`,
-      filePath: module.filePath,
-      type: module.type,
-      language: module.language
-    },
-    style: { 
-      background: module.type === 'directory' ? "#0066ff" : "#3b82f6", 
-      color: "white", 
-      border: "1px solid #1e40af",
-      borderRadius: "8px",
-      padding: "10px",
-      minWidth: "120px",
-      textAlign: "center"
-    },
-  }))
-}
-
-const initialEdges = [
-  { id: "e1-2", source: "1", target: "2", animated: true },
-  { id: "e1-3", source: "1", target: "3", animated: true },
-  { id: "e2-4", source: "2", target: "4", animated: true },
-  { id: "e2-5", source: "2", target: "5", animated: true },
-]
-
 import React, { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -110,6 +7,7 @@ import {
   MiniMap,
   Controls,
   Background,
+  BackgroundVariant,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -274,7 +172,7 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
         >
           <Controls className="bg-gray-800 border-gray-600" />
           <MiniMap className="bg-gray-800" nodeColor="#3b82f6" />
-          <Background variant="dots" gap={20} size={1} color="#374151" />
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
         </ReactFlow>
       </div>
 
