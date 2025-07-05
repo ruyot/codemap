@@ -3,6 +3,9 @@
   publish = ".next"
   environment = { NODE_VERSION = "20" }
 
+[build.processing]
+  skip = ["headers", "redirects", "functions", "formDetection"]
+
 [cache]
   # Cache node_modules and Next.js cache to speed up builds
   paths = [
