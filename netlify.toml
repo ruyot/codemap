@@ -1,7 +1,7 @@
 [build]
-  command = "npm install && npm run build"
+  command = "npm run build"
   publish = ".next"
-  environment = { NODE_VERSION = "18" }
+  environment = { NODE_VERSION = "20" }
 
 [cache]
   # Cache node_modules and Next.js cache to speed up builds
