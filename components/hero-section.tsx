@@ -28,7 +28,11 @@ export default function HeroSection({ onSignIn }: HeroSectionProps) {
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
         <h1 className="mb-6 text-6xl font-bold text-white md:text-8xl">Code Map</h1>
         <p className="mb-8 text-xl text-blue-100 md:text-2xl">The non-coder-friendly IDE</p>
-        <Button size="lg" className="bg-white text-blue-900 hover:bg-blue-50 text-lg px-8 py-4">
+        <Button 
+          size="lg" 
+          className="bg-white text-blue-900 hover:bg-blue-50 text-lg px-8 py-4"
+          onClick={onSignIn}
+        >
           Get Started
         </Button>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabaseClient"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -105,6 +106,27 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   const [activeTab, setActiveTab] = useState("repos")
   const [isAIEnabled, setIsAIEnabled] = useState(true)
   const [notifications, setNotifications] = useState(3)
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    const session = supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      authListener?.subscription.unsubscribe()
+    }
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    onSignOut()
+  }
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -158,21 +180,21 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white flex flex-col overflow-hidden">
+<div className="h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-black text-white flex flex-col overflow-hidden">
       {/* Cyberpunk Header */}
-      <div className="bg-white text-black border-b border-gray-200 shadow-lg">
+      <div className="bg-gradient-to-r from-purple-700 via-pink-700 to-purple-800 text-white border-b border-pink-600 shadow-lg">
         <div className="px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg flex items-center justify-center animate-pulse">
                 <Code2 className="h-5 w-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-xl font-extrabold bg-gradient-to-r from-pink-400 via-purple-400 to-pink-500 bg-clip-text text-transparent animate-text-flicker">
                 Code Map
               </h1>
             </div>
             
-            <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+            <div className="hidden md:flex items-center gap-2 text-sm text-pink-300">
               <span>•</span>
               <span>{selectedRepo.name}</span>
               <GitBranch className="h-3 w-3" />
@@ -183,26 +205,26 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
           <div className="flex items-center gap-3">
             <Button
               onClick={() => setShowCommandPalette(true)}
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
+              className="bg-pink-600 text-white hover:bg-pink-700 border border-pink-500 shadow-lg shadow-pink-600/50"
             >
               <Command className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Command Palette</span>
-              <kbd className="ml-2 px-1.5 py-0.5 text-xs bg-gray-200 rounded">⌘P</kbd>
+              <kbd className="ml-2 px-1.5 py-0.5 text-xs bg-pink-700 rounded">⌘P</kbd>
             </Button>
 
             <Button
               onClick={() => setIsAIEnabled(!isAIEnabled)}
               className={`${isAIEnabled 
-                ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              } border border-gray-300`}
+                ? 'bg-green-400 text-green-900 hover:bg-green-500' 
+                : 'bg-pink-600 text-white hover:bg-pink-700'
+              } border border-pink-500 shadow-lg shadow-pink-600/50`}
             >
               <Sparkles className="h-4 w-4 mr-2" />
               AI
             </Button>
 
             <div className="relative">
-              <Button className="bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300">
+              <Button className="bg-pink-600 text-white hover:bg-pink-700 border border-pink-500 shadow-lg shadow-pink-600/50">
                 <Bell className="h-4 w-4" />
                 {notifications > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -213,8 +235,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             </div>
 
             <Button
-              onClick={onSignOut}
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
+              onClick={handleSignOut}
+              className="bg-pink-600 text-white hover:bg-pink-700 border border-pink-500 shadow-lg shadow-pink-600/50"
             >
               <LogOut className="h-4 w-4" />
             </Button>
