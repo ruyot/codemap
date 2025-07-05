@@ -16,35 +16,35 @@ interface AppShellProps {
 }
 
 const mockRepos: Repository[] = [
-  { 
+  {
     id: "1",
-    name: "my-react-app", 
+    name: "my-react-app",
     owner: "user",
-    branch: "main", 
+    branch: "main",
     status: "active",
     modules: []
   },
-  { 
+  {
     id: "2",
-    name: "api-server", 
+    name: "api-server",
     owner: "user",
-    branch: "develop", 
+    branch: "develop",
     status: "modified",
     modules: []
   },
-  { 
+  {
     id: "3",
-    name: "mobile-app", 
+    name: "mobile-app",
     owner: "user",
-    branch: "feature/auth", 
+    branch: "feature/auth",
     status: "clean",
     modules: []
   },
-  { 
+  {
     id: "4",
-    name: "data-pipeline", 
+    name: "data-pipeline",
     owner: "user",
-    branch: "main", 
+    branch: "main",
     status: "active",
     modules: []
   },
@@ -66,7 +66,7 @@ export default function AppShell({ onSignOut }: AppShellProps) {
         event.preventDefault()
         setGitPaletteOpen(true)
       }
-      
+
       if (event.key === 'Escape') {
         setGitPaletteOpen(false)
       }
@@ -103,7 +103,7 @@ export default function AppShell({ onSignOut }: AppShellProps) {
   const closeTab = (index: number) => {
     const newTabs = openTabs.filter((_, i) => i !== index)
     setOpenTabs(newTabs)
-    
+
     if (index === activeTab && newTabs.length > 0) {
       const newActiveIndex = Math.min(activeTab, newTabs.length - 1)
       setActiveTab(newActiveIndex)
@@ -120,9 +120,8 @@ export default function AppShell({ onSignOut }: AppShellProps) {
             {openTabs.map((tab, index) => (
               <div
                 key={tab.id}
-                className={`flex items-center gap-2 px-3 py-2 border-r border-gray-300 cursor-pointer ${
-                  index === activeTab ? 'bg-gray-100' : 'hover:bg-gray-50'
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 border-r border-gray-300 cursor-pointer ${index === activeTab ? 'bg-gray-100' : 'hover:bg-gray-50'
+                  }`}
                 onClick={() => {
                   setActiveTab(index)
                   setSelectedRepo(tab)
@@ -151,7 +150,7 @@ export default function AppShell({ onSignOut }: AppShellProps) {
             <div className="p-4 border-b border-gray-300 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-black">Code Map</h2>
               <div className="flex items-center gap-2">
-                <Button 
+                <Button
                   onClick={() => setGitPaletteOpen(true)}
                   className="text-black hover:text-gray-700"
                   title="Git Command Palette (⌘+P)"
@@ -171,11 +170,10 @@ export default function AppShell({ onSignOut }: AppShellProps) {
                 {mockRepos.map((repo) => (
                   <Card
                     key={repo.name}
-                    className={`cursor-pointer transition-colors ${
-                      selectedRepo.name === repo.name
+                    className={`cursor-pointer transition-colors ${selectedRepo.name === repo.name
                         ? "bg-blue-100 border-blue-300"
                         : "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                    }`}
+                      }`}
                     onClick={() => openRepoInNewTab(repo)}
                   >
                     <CardContent className="p-3">
@@ -187,13 +185,12 @@ export default function AppShell({ onSignOut }: AppShellProps) {
                         <GitBranch className="h-3 w-3" />
                         <span>{repo.branch}</span>
                         <span
-                          className={`ml-auto px-2 py-1 rounded text-xs ${
-                            repo.status === "active"
+                          className={`ml-auto px-2 py-1 rounded text-xs ${repo.status === "active"
                               ? "bg-green-100 text-green-700 border-green-300"
                               : repo.status === "modified"
                                 ? "bg-yellow-100 text-yellow-700 border-yellow-300"
                                 : "bg-gray-100 text-gray-600 border-gray-300"
-                          }`}
+                            }`}
                         >
                           {repo.status}
                         </span>
@@ -255,8 +252,8 @@ export default function AppShell({ onSignOut }: AppShellProps) {
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   disabled={blackboxChat.loading}
                 />
-                <Button 
-                  onClick={handleSendMessage} 
+                <Button
+                  onClick={handleSendMessage}
                   disabled={blackboxChat.loading || !chatInput.trim()}
                 >
                   Send
