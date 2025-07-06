@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff, Mail, Lock, User, Github } from "lucide-react"
+import Image from "next/image"
 
 interface AuthModalProps {
   open: boolean
@@ -154,19 +155,7 @@ export default function AuthModal({ open, onOpenChange, onSuccess }: AuthModalPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-gray-900 border-gray-700 text-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-              {/* Black Widow Spider */}
-              <ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/>
-              <circle cx="12" cy="10" r="2.5" fill="currentColor"/>
-              <circle cx="10.5" cy="9" r="0.5" fill="white"/>
-              <circle cx="13.5" cy="9" r="0.5" fill="white"/>
-              {/* Legs */}
-              <path d="M8 8 L4 4 M8 10 L3 10 M8 12 L4 16 M8 14 L5 18" stroke="currentColor" strokeWidth="1" fill="none"/>
-              <path d="M16 8 L20 4 M16 10 L21 10 M16 12 L20 16 M16 14 L19 18" stroke="currentColor" strokeWidth="1" fill="none"/>
-              {/* Red hourglass marking */}
-              <path d="M10 14 L12 16 L14 14 L12 12 Z" fill="#dc2626"/>
-            </svg>
+          <DialogTitle>
             Welcome to Web
           </DialogTitle>
           <DialogDescription className="text-gray-400">

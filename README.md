@@ -4,7 +4,7 @@
 
 Code Map is a next-generation, UI-first IDE built with Next.js, Tailwind CSS, Shadcn/ui, and React Flow. This implementation includes a sophisticated multi-agent system orchestrated through Coral Protocol, with specialized agents for UI generation, error detection, prompt refinement, and autonomous code fixes.
 
-## 🚀 Features Implemented
+## Features Implemented
 
 ### 1. Dynamic Module Route (`/module/[id]`)
 - **Monaco Editor Integration**: Full-featured code editor with syntax highlighting
@@ -41,7 +41,7 @@ Code Map is a next-generation, UI-first IDE built with Next.js, Tailwind CSS, Sh
 - **RelationalAI Graph**: Module relationship indexing
 - **Structured Storage**: Organized tables for efficient querying
 
-## 🏗️ Architecture
+## Architecture
 
 ### Directory Structure
 ```

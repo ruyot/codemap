@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import MatrixRain from "@/components/matrix-rain"
 import AuthModal from "@/components/auth-modal"
+import Image from "next/image"
 
 interface HeroSectionProps {
   onSignIn: () => void
@@ -16,21 +17,31 @@ export default function HeroSection({ onSignIn }: HeroSectionProps) {
     <header className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900">
       <MatrixRain />
 
+      {/* Large Spider Logo Backdrop */}
+      <div className="absolute inset-0 z-5 flex items-center justify-center">
+        <div className="relative w-96 h-96 md:w-[600px] md:h-[600px] opacity-20">
+          <Image
+            src="/spiderlogonew.png"
+            alt="Spider Logo"
+            fill
+            className="object-contain filter brightness-150 contrast-125"
+            priority
+          />
+        </div>
+      </div>
+
       {/* Navigation */}
       <nav className="relative z-20 flex items-center justify-between p-6">
         <div className="flex items-center gap-2">
-          <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-            {/* Black Widow Spider */}
-            <ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/>
-            <circle cx="12" cy="10" r="2.5" fill="currentColor"/>
-            <circle cx="10.5" cy="9" r="0.5" fill="white"/>
-            <circle cx="13.5" cy="9" r="0.5" fill="white"/>
-            {/* Legs */}
-            <path d="M8 8 L4 4 M8 10 L3 10 M8 12 L4 16 M8 14 L5 18" stroke="currentColor" strokeWidth="1" fill="none"/>
-            <path d="M16 8 L20 4 M16 10 L21 10 M16 12 L20 16 M16 14 L19 18" stroke="currentColor" strokeWidth="1" fill="none"/>
-            {/* Red hourglass marking */}
-            <path d="M10 14 L12 16 L14 14 L12 12 Z" fill="#dc2626"/>
-          </svg>
+          <div className="relative w-6 h-6">
+            <Image
+              src="/spiderlogonew.png"
+              alt="Web Logo"
+              fill
+              className="object-contain filter brightness-0 invert"
+              sizes="24px"
+            />
+          </div>
           <div className="text-xl font-bold text-white">Web</div>
         </div>
         <Button
@@ -44,19 +55,7 @@ export default function HeroSection({ onSignIn }: HeroSectionProps) {
 
       {/* Hero Content */}
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 text-center">
-        <div className="flex items-center gap-4 mb-6">
-          <svg className="w-16 h-16 md:w-24 md:h-24 text-white" viewBox="0 0 24 24" fill="currentColor">
-            {/* Black Widow Spider */}
-            <ellipse cx="12" cy="12" rx="4" ry="6" fill="currentColor"/>
-            <circle cx="12" cy="10" r="2.5" fill="currentColor"/>
-            <circle cx="10.5" cy="9" r="0.5" fill="white"/>
-            <circle cx="13.5" cy="9" r="0.5" fill="white"/>
-            {/* Legs */}
-            <path d="M8 8 L4 4 M8 10 L3 10 M8 12 L4 16 M8 14 L5 18" stroke="currentColor" strokeWidth="1" fill="none"/>
-            <path d="M16 8 L20 4 M16 10 L21 10 M16 12 L20 16 M16 14 L19 18" stroke="currentColor" strokeWidth="1" fill="none"/>
-            {/* Red hourglass marking */}
-            <path d="M10 14 L12 16 L14 14 L12 12 Z" fill="#dc2626"/>
-          </svg>
+        <div className="mb-6">
           <h1 className="text-6xl font-bold text-white md:text-8xl">Web</h1>
         </div>
         <p className="mb-8 text-xl text-blue-100 md:text-2xl">The non-coder-friendly IDE</p>
