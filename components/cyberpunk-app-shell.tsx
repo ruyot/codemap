@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import CodeCanvas from "@/components/code-canvas"
 import GitCommandPalette from "@/components/git-command-palette"
 import TerminalComponent from "@/components/terminal"
+import GlobalSearch from "@/components/global-search"
 import { 
   Folder, 
   GitBranch, 
@@ -109,6 +110,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   const [notifications, setNotifications] = useState(3)
   const [user, setUser] = useState<any>(null)
   const [showTerminal, setShowTerminal] = useState(false)
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false)
 
   useEffect(() => {
     const session = supabase.auth.getSession().then(({ data: { session } }) => {
@@ -182,7 +184,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   }
 
   return (
-<div className="h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-black text-white flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-black text-white flex flex-col overflow-hidden">
       {/* Cyberpunk Header */}
       <div className="bg-gradient-to-r from-purple-700 via-pink-700 to-purple-800 text-white border-b border-pink-600 shadow-lg">
         <div className="px-6 py-3 flex items-center justify-between">
@@ -228,9 +230,9 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             <Button
               onClick={() => setIsAIEnabled(!isAIEnabled)}
               className={`${isAIEnabled 
-                ? 'bg-green-400 text-green-900 hover:bg-green-500' 
-                : 'bg-pink-600 text-white hover:bg-pink-700'
-              } border border-pink-500 shadow-lg shadow-pink-600/50`}
+                ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                : 'bg-gray-600 text-gray-300 hover:bg-gray-700'
+              } border border-purple-600 shadow-lg shadow-purple-600/50`}
             >
               <Sparkles className="h-4 w-4 mr-2" />
               AI
@@ -341,7 +343,10 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                     <Terminal className="h-4 w-4 mr-2" />
                     Terminal
                   </Button>
-                  <Button className="w-full justify-start bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600">
+                  <Button 
+                    onClick={() => setShowGlobalSearch(true)}
+                    className="w-full justify-start bg-gray-700/50 hover:bg-gray-600/50 border border-gray-600"
+                  >
                     <Search className="h-4 w-4 mr-2" />
                     Global Search
                   </Button>
@@ -363,7 +368,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
         </div>
 
         {/* Enhanced Center Panel */}
-        <div className="flex-1 bg-gradient-to-br from-gray-900 to-black relative overflow-hidden">
+        <div className="flex-1 bg-gray-800 relative overflow-hidden">
           {/* Cyberpunk grid background */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{
@@ -468,6 +473,19 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
       {/* Terminal */}
       {showTerminal && (
         <TerminalComponent onClose={() => setShowTerminal(false)} />
+      )}
+
+      {/* Global Search */}
+      {showGlobalSearch && (
+        <GlobalSearch 
+          open={showGlobalSearch} 
+          onOpenChange={setShowGlobalSearch} 
+          onFileSelect={(file) => {
+            setShowGlobalSearch(false)
+            // Navigate to file editor page or handle file open
+            router.push(`/module/${file}`)
+          }}
+        />
       )}
     </div>
   )

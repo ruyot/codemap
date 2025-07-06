@@ -109,38 +109,36 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(generateNodes(selectedRepo.name, moduleNodes))
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [mouseMode, setMouseMode] = useState<"selection" | "dragging">("selection")
+  const [isWKeyPressed, setIsWKeyPressed] = useState(false)
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges])
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    if (mouseMode !== "selection") return
+  // Handle W key press for alternative navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'w') {
+        setIsWKeyPressed(true)
+      }
+    }
 
-    // Add visual feedback for single clicks
-    console.log("Clicked node:", node.data.label)
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'w') {
+        setIsWKeyPressed(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
     
-    // Update node style to show selection
-    setNodes((nodes: Node[]) =>
-      nodes.map((n: Node) => ({
-        ...n,
-        style: {
-          ...n.style,
-          border: n.id === node.id ? "2px solid #3b82f6" : "1px solid #1e40af",
-          boxShadow: n.id === node.id ? "0 0 20px rgba(59, 130, 246, 0.5)" : "none",
-        },
-      }))
-    )
-  }, [setNodes, mouseMode])
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
 
-  const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-    event.preventDefault()
-    event.stopPropagation()
-    
-    if (mouseMode !== "selection") return
-
-    // Only navigate for file nodes, not directories
+  const navigateToNode = useCallback((node: Node) => {
     if (node.data.type === 'file') {
-      console.log("Double-clicking node:", node.id, "Type:", node.data.type, "FilePath:", node.data.filePath)
-      console.log("Navigating to module:", node.id)
+      console.log("Navigating to node:", node.id, "Type:", node.data.type, "FilePath:", node.data.filePath)
       
       // Add visual feedback
       setNodes((nodes: Node[]) =>
@@ -160,9 +158,44 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
         router.push(`/module/${node.id}`)
       }, 200)
     } else {
-      console.log("Double-clicked directory node:", node.id, "- not navigating")
+      console.log("Clicked directory node:", node.id, "- not navigating")
     }
-  }, [router, mouseMode, setNodes])
+  }, [router, setNodes])
+
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    if (mouseMode !== "selection") return
+
+    // Check if W key is pressed for alternative navigation
+    if (isWKeyPressed) {
+      navigateToNode(node)
+      return
+    }
+
+    // Add visual feedback for single clicks
+    console.log("Clicked node:", node.data.label)
+    
+    // Update node style to show selection
+    setNodes((nodes: Node[]) =>
+      nodes.map((n: Node) => ({
+        ...n,
+        style: {
+          ...n.style,
+          border: n.id === node.id ? "2px solid #3b82f6" : "1px solid #1e40af",
+          boxShadow: n.id === node.id ? "0 0 20px rgba(59, 130, 246, 0.5)" : "none",
+        },
+      }))
+    )
+  }, [setNodes, mouseMode, isWKeyPressed, navigateToNode])
+
+  const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault()
+    event.stopPropagation()
+    
+    if (mouseMode !== "selection") return
+
+    // Use the same navigation logic
+    navigateToNode(node)
+  }, [mouseMode, navigateToNode])
 
   // Update nodes when repo changes
   useEffect(() => {
@@ -175,7 +208,7 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
         <h2 className="text-lg font-semibold text-white">
           {selectedRepo.name} - {selectedRepo.branch}
         </h2>
-        <p className="text-sm text-gray-400">Double-click any file node to open in code editor</p>
+        <p className="text-sm text-gray-400">Double-click or hold W + click any file node to open in code editor</p>
       </div>
 
       <div className="h-full">
@@ -200,18 +233,22 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
       </div>
 
       {/* Mouse Mode Toggle */}
-      <div className="absolute bottom-4 left-4 bg-gray-800 bg-opacity-80 rounded-md p-2 flex space-x-2 text-white text-sm select-none z-10">
+      <div className="absolute top-4 right-4 bg-gray-800 bg-opacity-80 rounded-md p-2 flex space-x-2 text-white text-sm select-none z-10 items-center">
         <button
-          className={`px-3 py-1 rounded ${mouseMode === "selection" ? "bg-blue-600" : "bg-gray-600"}`}
+          className={`px-3 py-1 rounded flex items-center gap-1 ${mouseMode === "selection" ? "bg-blue-600" : "bg-gray-600"}`}
           onClick={() => setMouseMode("selection")}
+          title="Selection Mode"
         >
-          Selection
+          <span>Selection</span>
+          <span className="text-lg font-bold">+</span>
         </button>
         <button
-          className={`px-3 py-1 rounded ${mouseMode === "dragging" ? "bg-blue-600" : "bg-gray-600"}`}
+          className={`px-3 py-1 rounded flex items-center gap-1 ${mouseMode === "dragging" ? "bg-blue-600" : "bg-gray-600"}`}
           onClick={() => setMouseMode("dragging")}
+          title="Dragging Mode"
         >
-          Dragging
+          <span>Dragging</span>
+          <span className="text-lg font-bold">-</span>
         </button>
       </div>
     </div>
