@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import LandingPage from "@/components/landing-page"
-import CyberpunkAppShell from "@/components/cyberpunk-app-shell"
+import CyberpunkAppShell from "@/components/design-app-shell"
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)

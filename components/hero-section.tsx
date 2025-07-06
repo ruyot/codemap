@@ -19,7 +19,7 @@ export default function HeroSection({ onSignIn }: HeroSectionProps) {
 
       {/* Large Spider Logo Backdrop */}
       <div className="absolute inset-0 z-5 flex items-center justify-center">
-        <div className="relative w-96 h-96 md:w-[600px] md:h-[600px] opacity-20">
+        <div className="relative w-96 h-96 md:w-[800px] md:h-[800px] opacity-20">
           <Image
             src="/spiderlogonew.png"
             alt="Spider Logo"
@@ -58,7 +58,7 @@ export default function HeroSection({ onSignIn }: HeroSectionProps) {
         <div className="mb-6">
           <h1 className="text-6xl font-bold text-white md:text-8xl">Web</h1>
         </div>
-        <p className="mb-8 text-xl text-blue-100 md:text-2xl">The non-coder-friendly IDE</p>
+        <p className="mb-8 text-xl text-blue-100 md:text-2xl">The IDE for everyone</p>
         <Button 
           size="lg" 
           className="bg-white text-blue-900 hover:bg-blue-50 text-lg px-8 py-4"
