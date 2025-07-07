@@ -16,11 +16,12 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# [[plugins]]
-#   package = "@netlify/plugin-cache"
+[[plugins]]
+  package = "@netlify/plugin-cache"
 
 [context.production.environment]
   NODE_ENV = "production"
+  NETLIFY_SKIP_POSTPROCESSING = "true"
 
 [context.deploy-preview.environment]
   NODE_ENV = "development"
