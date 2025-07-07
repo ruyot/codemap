@@ -72,3 +72,85 @@ export interface ReactFlowSchema {
     }>;
   }>;
 }
+
+// Drag and Drop Types
+export interface DragDropFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  content?: string;
+  lastModified: Date;
+}
+
+export interface DragDropNode {
+  id: string;
+  type: 'file' | 'directory' | 'component' | 'module';
+  label: string;
+  filePath: string;
+  position: { x: number; y: number };
+  size?: number;
+  language?: string;
+  children?: DragDropNode[];
+  parent?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface DragDropOperation {
+  id: string;
+  type: 'move' | 'copy' | 'merge' | 'link' | 'upload';
+  source: DragDropNode | DragDropFile;
+  target?: DragDropNode;
+  position?: { x: number; y: number };
+  timestamp: Date;
+  status: 'pending' | 'in-progress' | 'completed' | 'failed';
+  progress?: number;
+  error?: string;
+}
+
+export interface GitVisualOperation {
+  id: string;
+  type: 'merge' | 'rebase' | 'cherry-pick' | 'branch' | 'commit';
+  source: string; // branch/commit id
+  target?: string; // branch/commit id
+  position: { x: number; y: number };
+  status: 'pending' | 'in-progress' | 'completed' | 'failed';
+  conflicts?: Array<{
+    file: string;
+    line: number;
+    content: string;
+  }>;
+}
+
+export interface CanvasState {
+  zoom: number;
+  pan: { x: number; y: number };
+  selectedNodes: string[];
+  selectedEdges: string[];
+  draggedNodes: string[];
+  viewport: { x: number; y: number; zoom: number };
+  miniMapVisible: boolean;
+  gridVisible: boolean;
+}
+
+export interface PanelState {
+  id: string;
+  title: string;
+  side: 'left' | 'right' | 'top' | 'bottom';
+  isMinimized: boolean;
+  size: number;
+  minSize: number;
+  maxSize: number;
+  isResizing: boolean;
+  order: number;
+}
+
+export interface WorkspaceLayout {
+  id: string;
+  name: string;
+  panels: PanelState[];
+  canvas: CanvasState;
+  createdAt: Date;
+  updatedAt: Date;
+}

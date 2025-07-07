@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ErrorFlag, BlackboxResponse } from '@/types'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-const MAX_REQUESTS = 2
+const MAX_REQUESTS = 100
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,16 +47,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Real Blackbox API call
-    const response = await fetch('https://api.blackbox.ai/suggest-fix', {
+    const response = await fetch('https://api.blackbox.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.BLACKBOX_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        filePath,
-        code,
-        errors
+        model: "blackboxai/openai/gpt-4",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `Suggest fixes for the following code in file ${filePath}:` },
+              { type: "text", text: code }
+            ]
+          }
+        ]
       })
     })
 

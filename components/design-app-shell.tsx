@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import CodeCanvas from "@/components/code-canvas"
+import DragDropCanvas from "@/components/drag-drop-canvas"
 import GitCommandPalette from "@/components/git-command-palette"
 import TerminalComponent from "@/components/terminal"
 import GlobalSearch from "@/components/global-search"
+import MinimizablePanel from "@/components/minimizable-panel"
+import FileUploadZone from "@/components/file-upload-zone"
 import Image from "next/image"
 import { 
   Folder, 
@@ -36,7 +38,8 @@ import {
   Share,
   Bell,
   User,
-  Menu
+  Menu,
+  X
 } from "lucide-react"
 
 interface CyberpunkAppShellProps {
@@ -112,6 +115,9 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   const [user, setUser] = useState<any>(null)
   const [showTerminal, setShowTerminal] = useState(false)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
+  const [showFileUpload, setShowFileUpload] = useState(false)
+  const [leftPanelMinimized, setLeftPanelMinimized] = useState(false)
+  const [rightPanelMinimized, setRightPanelMinimized] = useState(false)
 
   useEffect(() => {
     const session = supabase.auth.getSession().then(({ data: { session } }) => {
@@ -257,7 +263,14 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
 
       <div className="flex-1 flex overflow-hidden">
         {/* Enhanced Left Panel */}
-        <div className="w-80 bg-gradient-to-b from-gray-800 to-gray-900 border-r border-gray-700 flex flex-col">
+        <MinimizablePanel
+          title="Project Explorer"
+          side="left"
+          defaultMinimized={leftPanelMinimized}
+          onToggle={setLeftPanelMinimized}
+          icon={<Folder className="h-4 w-4" />}
+          className="bg-gradient-to-b from-gray-800 to-gray-900 border-r border-gray-700"
+        >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="bg-gray-800/50 border-b border-gray-700 rounded-none justify-start px-4 py-2">
               <TabsTrigger value="repos" className="data-[state=active]:bg-blue-600/20 data-[state=active]:text-blue-400">
@@ -322,9 +335,20 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
 
             <TabsContent value="files" className="flex-1 m-0">
               <ScrollArea className="h-full p-4">
-                <div className="text-center text-gray-400 py-8">
-                  <Code2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>File explorer coming soon</p>
+                <div className="space-y-4">
+                  <Button 
+                    onClick={() => setShowFileUpload(true)}
+                    className="w-full justify-start bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Files/Project
+                  </Button>
+                  
+                  <div className="text-center text-gray-400 py-8">
+                    <Code2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Drag files here or use upload button</p>
+                    <p className="text-sm mt-2">File tree will appear after upload</p>
+                  </div>
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -361,9 +385,9 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
               </ScrollArea>
             </TabsContent>
           </Tabs>
-        </div>
+        </MinimizablePanel>
 
-        {/* Enhanced Center Panel */}
+        {/* Enhanced Center Panel - Drag & Drop Canvas */}
         <div className="flex-1 bg-gray-800 relative overflow-hidden">
           {/* Cyberpunk grid background */}
           <div className="absolute inset-0 opacity-10">
@@ -377,12 +401,29 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
           </div>
           
           <div className="relative h-full">
-            <CodeCanvas selectedRepo={selectedRepo} />
+            <DragDropCanvas 
+              selectedRepo={selectedRepo}
+              onFileSelect={(fileId, filePath) => {
+                // Navigate to file editor
+                router.push(`/module/${fileId}`)
+              }}
+              onFileUpload={(files) => {
+                console.log('Files uploaded:', files)
+                // Handle file upload logic here
+              }}
+            />
           </div>
         </div>
 
         {/* Enhanced Right Panel - AI Chat */}
-        <div className="w-80 bg-gradient-to-b from-gray-800 to-gray-900 border-l border-gray-700 flex flex-col">
+        <MinimizablePanel
+          title="AI Assistant"
+          side="right"
+          defaultMinimized={rightPanelMinimized}
+          onToggle={setRightPanelMinimized}
+          icon={<Sparkles className="h-4 w-4" />}
+          className="bg-gradient-to-b from-gray-800 to-gray-900 border-l border-gray-700"
+        >
           <div className="p-4 border-b border-gray-700 bg-gradient-to-r from-blue-600/10 to-purple-600/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -454,7 +495,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
               </p>
             )}
           </div>
-        </div>
+        </MinimizablePanel>
       </div>
 
       {/* Command Palette */}
@@ -482,6 +523,36 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             router.push(`/module/${file}`)
           }}
         />
+      )}
+
+      {/* File Upload Modal */}
+      {showFileUpload && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-lg border border-gray-700 p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">Upload Files or Project</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFileUpload(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <FileUploadZone
+              onFileUpload={(files) => {
+                console.log('Files uploaded:', files)
+                setShowFileUpload(false)
+                // Handle file upload logic
+              }}
+              acceptedTypes={['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'html', 'css', 'json', 'md']}
+              maxFileSize={50 * 1024 * 1024} // 50MB
+              maxFiles={100}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
