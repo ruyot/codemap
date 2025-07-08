@@ -1,17 +1,19 @@
 "use client"
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Editor } from '@monaco-editor/react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Bug, Sparkles, History, Eye, Wand2 } from 'lucide-react'
+import { FileText, Bug, Sparkles, History, Eye, Wand2, MessageSquare, FolderOpen } from 'lucide-react'
+import FileAIChat from './file-ai-chat'
+import FileExplorer from './file-explorer'
+import { FileManager, FileNode } from '@/lib/file-manager'
 
 // Mock data and types for now
 interface Module {
-
   language?: string;
 }
 
@@ -27,17 +29,133 @@ interface Suggestion {
   // Add other properties of suggestion
 }
 
-const EnhancedModuleEditor = () => {
+interface EnhancedModuleEditorProps {
+  moduleId?: string;
+}
+
+const EnhancedModuleEditor = ({ moduleId }: EnhancedModuleEditorProps) => {
   const [showPreview, setShowPreview] = useState(true);
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [showFileExplorer, setShowFileExplorer] = useState(true);
   const [activeTab, setActiveTab] = useState('editor');
   const [errors, setErrors] = useState<Error[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [code, setCode] = useState('// Start coding here...');
+  const [currentFile, setCurrentFile] = useState<FileNode | null>(null);
+  const [files, setFiles] = useState<FileNode[]>([]);
+  const [fileManager, setFileManager] = useState<FileManager | null>(null);
   const editorRef = useRef(null);
   const module: Module = { language: 'typescript' };
 
+  // Initialize file manager
+  useEffect(() => {
+    if (moduleId) {
+      const manager = new FileManager(moduleId);
+      setFileManager(manager);
+      
+      // Load initial files
+      const loadFiles = async () => {
+        await manager.loadFiles();
+        setFiles(manager.getFiles());
+      };
+      loadFiles();
+    }
+  }, [moduleId]);
+
   const applySuggestion = (suggestion: Suggestion) => {
     console.log('Applying suggestion:', suggestion);
+  };
+
+  const handleFileCreated = (file: { name: string; content: string; type: string }) => {
+    if (fileManager) {
+      // Refresh file list
+      setFiles([...fileManager.getFiles()]);
+    }
+    console.log('New file created:', file);
+  };
+
+  const handleFileSelect = (file: FileNode) => {
+    setCurrentFile(file);
+    if (file.content) {
+      setCode(file.content);
+    }
+  };
+
+  const handleFileCreate = async (name: string, type: 'file' | 'directory', parentPath?: string) => {
+    if (fileManager) {
+      try {
+        const content = type === 'file' ? '// New file' : '';
+        await fileManager.createFile(name, type, content, parentPath);
+        setFiles([...fileManager.getFiles()]);
+      } catch (error) {
+        console.error('Error creating file:', error);
+      }
+    }
+  };
+
+  const handleFileDelete = async (fileId: string) => {
+    if (fileManager) {
+      try {
+        await fileManager.deleteFile(fileId);
+        setFiles([...fileManager.getFiles()]);
+        
+        // Clear current file if it was deleted
+        if (currentFile?.id === fileId) {
+          setCurrentFile(null);
+          setCode('// No file selected');
+        }
+      } catch (error) {
+        console.error('Error deleting file:', error);
+      }
+    }
+  };
+
+  const handleFileRename = async (fileId: string, newName: string) => {
+    if (fileManager) {
+      try {
+        await fileManager.renameFile(fileId, newName);
+        setFiles([...fileManager.getFiles()]);
+        
+        // Update current file if it was renamed
+        if (currentFile?.id === fileId) {
+          setCurrentFile({ ...currentFile, name: newName });
+        }
+      } catch (error) {
+        console.error('Error renaming file:', error);
+      }
+    }
+  };
+
+  const handleFileUpload = async (files: FileList) => {
+    if (fileManager) {
+      try {
+        await fileManager.uploadFiles(files);
+        setFiles([...fileManager.getFiles()]);
+      } catch (error) {
+        console.error('Error uploading files:', error);
+      }
+    }
+  };
+
+  const handleFileDownload = (file: FileNode) => {
+    if (fileManager) {
+      try {
+        fileManager.downloadFile(file);
+      } catch (error) {
+        console.error('Error downloading file:', error);
+      }
+    }
+  };
+
+  const handleSaveFile = async () => {
+    if (currentFile && fileManager) {
+      try {
+        await fileManager.saveFile(currentFile.id, code);
+        console.log('File saved successfully');
+      } catch (error) {
+        console.error('Error saving file:', error);
+      }
+    }
   };
 
   return (
@@ -46,21 +164,60 @@ const EnhancedModuleEditor = () => {
       <div className="flex items-center justify-between p-2 border-b border-gray-700 bg-gray-800">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold">Enhanced Module Editor</h2>
+          {currentFile && (
+            <span className="text-sm text-gray-400">
+              {currentFile.path}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => setShowFileExplorer(!showFileExplorer)}
+            className={showFileExplorer ? "bg-blue-600 hover:bg-blue-700" : ""}
+          >
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Explorer
+          </Button>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => setShowAIChat(!showAIChat)}
+            className={showAIChat ? "bg-purple-600 hover:bg-purple-700" : ""}
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            AI Chat
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => setShowPreview(!showPreview)}>
             <Eye className="h-4 w-4 mr-2" />
             {showPreview ? 'Hide Preview' : 'Show Preview'}
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={handleSaveFile} disabled={!currentFile}>
             Save
           </Button>
         </div>
       </div>
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
+        {/* File Explorer */}
+        {showFileExplorer && (
+          <div className="w-64 border-r border-gray-700">
+            <FileExplorer
+              files={files}
+              onFileSelect={handleFileSelect}
+              onFileCreate={handleFileCreate}
+              onFileDelete={handleFileDelete}
+              onFileRename={handleFileRename}
+              onFileUpload={handleFileUpload}
+              onFileDownload={handleFileDownload}
+              selectedFileId={currentFile?.id}
+            />
+          </div>
+        )}
+
         {/* Editor Panel */}
-        <div className={`${showPreview ? 'w-1/2' : 'w-full'} flex flex-col`}>
+        <div className={`${showPreview ? 'w-1/2' : 'w-full'} ${showAIChat ? 'w-1/3' : ''} flex flex-col`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="bg-gray-800 border-b border-gray-700 rounded-none justify-start px-6">
               <TabsTrigger value="editor" className="data-[state=active]:bg-gray-700">
@@ -84,7 +241,7 @@ const EnhancedModuleEditor = () => {
             <TabsContent value="editor" className="flex-1 m-0 overflow-auto">
               <Editor
                 height="100%"
-                language={module.language || "typescript"}
+                language={currentFile?.language || module.language || "typescript"}
                 value={code}
                 onChange={(value) => setCode(value || "")}
                 onMount={(editor) => { editorRef.current = editor as any }}
@@ -140,7 +297,7 @@ const EnhancedModuleEditor = () => {
                             </div>
                           </div>
                         </CardContent>
-                      </card>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -193,6 +350,19 @@ const EnhancedModuleEditor = () => {
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* AI Chat Panel */}
+        {showAIChat && (
+          <div className="w-1/3 border-l border-gray-700">
+            <FileAIChat
+              codeContext={code}
+              fileName={currentFile?.name || "untitled"}
+              onFileCreated={handleFileCreated}
+              projectId={moduleId}
+              fileManager={fileManager || undefined}
+            />
+          </div>
+        )}
 
         {/* Preview Panel */}
         {showPreview && (

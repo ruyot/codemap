@@ -305,7 +305,7 @@ export default function DragDropCanvas({
     event.preventDefault()
     event.stopPropagation()
     
-    if (node.data.type === 'file' && typeof onFileSelect === 'function') {
+    if (node.data?.type === 'file' && typeof onFileSelect === 'function' && typeof node.data.filePath === 'string') {
       onFileSelect(node.id, node.data.filePath)
     }
   }, [onFileSelect])
