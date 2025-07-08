@@ -38,6 +38,8 @@ export default function FileAIChat({
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string>('anonymous')
+  const [pendingClarification, setPendingClarification] = useState<null | { code: string, type: string }>(null)
+  const [clarificationPrompt, setClarificationPrompt] = useState<string>("")
   
   const { suggestFix, loading: isLoading, error } = useBlackbox({
     onError: (error) => {
@@ -135,18 +137,31 @@ export default function FileAIChat({
     }
   }
 
-  // Function to parse AI response for file creation requests
+  // Function to parse AI response for file creation or code blocks
   const parseAIResponse = (content: string) => {
-    // Look for file creation patterns in AI response
-    const fileCreationPattern = /```(\w+):([^\n]+)\n([\s\S]*?)```/g
+    // 1. Try to match triple-backtick file blocks: ```lang:filename\ncode```
+    const fileBlockPattern = /```(\w+):([^\n]+)\n([\s\S]*?)```/g
     const files: Array<{ name: string; content: string; type: string }> = []
-    
     let match
-    while ((match = fileCreationPattern.exec(content)) !== null) {
-      const [, type, name, content] = match
-      files.push({ name, content, type })
+    while ((match = fileBlockPattern.exec(content)) !== null) {
+      const [, type, name, code] = match
+      files.push({ name: name.trim(), content: code.trim(), type })
     }
-
+    // 2. If no file blocks, look for generic code blocks: ```lang\ncode```
+    if (files.length === 0) {
+      const codeBlockPattern = /```(\w+)\n([\s\S]*?)```/g
+      let codeMatch
+      let i = 1
+      while ((codeMatch = codeBlockPattern.exec(content)) !== null) {
+        const [, type, code] = codeMatch
+        // Try to find a file name in the text before the code block
+        const before = content.slice(0, codeMatch.index)
+        const fileNameMatch = before.match(/(?:file(?: name)?(?: called)?|create|add|make)[^\n]*([\w\-]+\.[\w]+)/i)
+        const name = fileNameMatch ? fileNameMatch[1] : `ai-generated-${i}.${type}`
+        files.push({ name, content: code.trim(), type })
+        i++
+      }
+    }
     return files
   }
 
@@ -201,9 +216,52 @@ export default function FileAIChat({
     }
   }
 
+  // Function to handle clarification follow-up
+  const handleClarification = async (clarification: string) => {
+    if (!pendingClarification) return
+    // Ask the AI for the file name or intent
+    const followupPrompt = `The user previously asked for code, but you did not specify a file name. Here is the code:\n\n\`\`\`${pendingClarification.type}\n${pendingClarification.code}\n\`\`\`\n\nUser clarification: ${clarification}\n\nPlease respond with the file name and code in the format:\n\`\`\`language:filename.ext\ncode here\n\`\`\``
+    const result = await suggestFix(fileName, followupPrompt, [])
+    if (result && result.choices && result.choices[0]?.message?.content) {
+      const aiContent = result.choices[0].message.content
+      const filesToCreateOrUpdate = parseAIResponse(aiContent)
+      let finalContent = aiContent
+      let metadata: Message['metadata'] = {}
+      if (filesToCreateOrUpdate.length > 0) {
+        for (const file of filesToCreateOrUpdate) {
+          let fileNode = fileManager?.getFiles().flat().find(f => f.name === file.name)
+          if (fileNode) {
+            await fileManager?.saveFile(fileNode.id, file.content)
+            finalContent += `\n\n✏️ **Updated file**: \`${file.name}\``
+          } else {
+            await createFile(file.name, 'file', file.content)
+            finalContent += `\n\n✅ **File created**: \`${file.name}\``
+          }
+          metadata.fileCreated = file
+        }
+        metadata.action = 'files_created_or_updated'
+      }
+      setPendingClarification(null)
+      setClarificationPrompt("")
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: finalContent,
+        timestamp: new Date(),
+        metadata
+      }])
+    }
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
     
+    if (pendingClarification) {
+      // Handle clarification follow-up
+      await handleClarification(input)
+      setInput("")
+      return
+    }
+
     const userMessage: Message = {
       role: "user",
       content: input,
@@ -213,60 +271,44 @@ export default function FileAIChat({
     setInput("")
 
     try {
-      // Check for special commands
-      const lowerInput = input.toLowerCase()
-      
-      if (lowerInput.includes('upload') || lowerInput.includes('import')) {
-        // Handle file upload request
-        const uploadMessage: Message = {
-          role: "assistant",
-          content: `To upload files, you can:\n\n1. **Drag and drop** files into the file explorer\n2. **Click the upload button** in the file explorer\n3. **Use the file menu** to select files\n\nI can help you with the uploaded files once they're in your project!`,
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, uploadMessage])
-        return
-      }
+      // Always instruct the AI to return code and file name if possible
+      const prompt = `You are an expert coding assistant.\n\nUser request: ${userMessage.content}\n\nIf the user asks for code, always return the code in a code block. If you know the file name, include it in the format:\n\n\`\`\`language:filename.ext\ncode here\n\`\`\`\n\nIf you don't know the file name, just return the code in a code block.\n\nIf the code is for an existing file, say so in plain text before the code block.\nIf the code is for a new file, say so in plain text before the code block.\n\nIf the user asks for multiple files, return each in a separate code block.\n\nAlways use the correct file extension for the language.`
 
-      if (lowerInput.includes('download') || lowerInput.includes('export')) {
-        // Handle file download request
-        const downloadMessage: Message = {
-          role: "assistant",
-          content: `To download files:\n\n1. **Right-click** on any file in the file explorer\n2. **Select "Download"** from the context menu\n3. **Or use the file menu** to download files\n\nI can help you download specific files if you tell me which ones!`,
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, downloadMessage])
-        return
-      }
-
-      // Prepare prompt with code context and user input
-      const prompt = `Here is the code from ${fileName}:\n\n${codeContext}\n\nUser question or request:\n${userMessage.content}\n\nIf the user asks you to create a file, respond with the file content in this format:\n\`\`\`language:filename.ext\nfile content here\n\`\`\`\n\nYou can create any type of file: React components, utilities, styles, configuration files, etc.`
-
-      // Use the hook instead of direct fetch
       const result = await suggestFix(fileName, prompt, [])
       
       if (result && result.choices && result.choices[0]?.message?.content) {
         const aiContent = result.choices[0].message.content
-        
-        // Check if AI wants to create files
-        const filesToCreate = parseAIResponse(aiContent)
-        
+        const filesToCreateOrUpdate = parseAIResponse(aiContent)
         let finalContent = aiContent
         let metadata: Message['metadata'] = {}
-
-        if (filesToCreate.length > 0) {
-          // Create files
-          for (const file of filesToCreate) {
-            try {
+        if (filesToCreateOrUpdate.length > 0) {
+          for (const file of filesToCreateOrUpdate) {
+            let fileNode = fileManager?.getFiles().flat().find(f => f.name === file.name)
+            if (fileNode) {
+              await fileManager?.saveFile(fileNode.id, file.content)
+              finalContent += `\n\n✏️ **Updated file**: \`${file.name}\``
+            } else {
               await createFile(file.name, 'file', file.content)
-              finalContent += `\n\n✅ **File created**: \`${file.name}\`\nThe file has been added to your project!`
-              metadata.fileCreated = file
-            } catch (error) {
-              finalContent += `\n\n❌ **Error creating file**: \`${file.name}\`\n${error}`
+              finalContent += `\n\n✅ **File created**: \`${file.name}\``
             }
+            metadata.fileCreated = file
           }
-          metadata.action = 'files_created'
+          metadata.action = 'files_created_or_updated'
+        } else {
+          // If we got a code block but no file name, ask for clarification
+          const codeBlockPattern = /```(\w+)\n([\s\S]*?)```/g
+          const codeMatch = codeBlockPattern.exec(aiContent)
+          if (codeMatch) {
+            setPendingClarification({ code: codeMatch[2], type: codeMatch[1] })
+            setClarificationPrompt("You provided code but didn't specify a file name. Which file should this code go in?")
+            setMessages(prev => [...prev, {
+              role: "assistant",
+              content: "❓ I see you want to add code, but I need to know the file name. Please specify the file name for this code.",
+              timestamp: new Date()
+            }])
+            return
+          }
         }
-
         const aiMessage: Message = {
           role: "assistant",
           content: finalContent,

@@ -129,8 +129,13 @@ const EnhancedModuleEditor = ({ moduleId }: EnhancedModuleEditorProps) => {
   const handleFileUpload = async (files: FileList) => {
     if (fileManager) {
       try {
-        await fileManager.uploadFiles(files);
+        const uploadedFiles = await fileManager.uploadFiles(files);
         setFiles([...fileManager.getFiles()]);
+        // Optionally, open the first uploaded file in the editor
+        if (uploadedFiles.length > 0) {
+          setCurrentFile(uploadedFiles[0]);
+          setCode(uploadedFiles[0].content || '');
+        }
       } catch (error) {
         console.error('Error uploading files:', error);
       }
