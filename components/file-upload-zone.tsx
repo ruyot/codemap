@@ -101,12 +101,17 @@ export default function FileUploadZone({
 
     setUploadedFiles(prev => [...prev, ...newFiles])
 
-    // Simulate upload progress
-    for (const uploadFile of newFiles) {
-      try {
-        // Simulate upload with progress
-        for (let progress = 0; progress <= 100; progress += 10) {
-          await new Promise(resolve => setTimeout(resolve, 100))
+    try {
+      // Create FormData for actual upload
+      const formData = new FormData()
+      Array.from(files).forEach(file => {
+        formData.append('files', file)
+      })
+
+      // Update progress for all files
+      for (const uploadFile of newFiles) {
+        for (let progress = 0; progress <= 90; progress += 10) {
+          await new Promise(resolve => setTimeout(resolve, 50))
           setUploadedFiles(prev => 
             prev.map(f => 
               f.id === uploadFile.id 
@@ -115,33 +120,45 @@ export default function FileUploadZone({
             )
           )
         }
-
-        // Mark as success
-        setUploadedFiles(prev => 
-          prev.map(f => 
-            f.id === uploadFile.id 
-              ? { ...f, status: 'success' as const, progress: 100 }
-              : f
-          )
-        )
-      } catch (error) {
-        setUploadedFiles(prev => 
-          prev.map(f => 
-            f.id === uploadFile.id 
-              ? { 
-                  ...f, 
-                  status: 'error' as const, 
-                  error: 'Upload failed' 
-                }
-              : f
-          )
-        )
       }
+
+      // Make actual API call
+      const response = await fetch('/api/project/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const result = await response.json()
+
+      // Mark all files as success
+      setUploadedFiles(prev => 
+        prev.map(f => ({ ...f, status: 'success' as const, progress: 100 }))
+      )
+
+      // Call callbacks with the uploaded project data
+      onFileUpload?.(files)
+      onProjectUpload?.(files)
+
+      // Store project data in localStorage for now (could be moved to context/state management)
+      localStorage.setItem('uploadedProject', JSON.stringify(result))
+
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadedFiles(prev => 
+        prev.map(f => ({ 
+          ...f, 
+          status: 'error' as const, 
+          error: 'Upload failed' 
+        }))
+      )
     }
 
     setIsUploading(false)
-    onFileUpload?.(files)
-  }, [onFileUpload])
+  }, [onFileUpload, onProjectUpload])
 
   const { dragState, getDropZoneProps } = useDragDrop({
     onFileUpload: handleFileUpload,

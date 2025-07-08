@@ -156,7 +156,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   }, [])
 
   const handleSendMessage = async () => {
-    if (!chatInput.trim()) return
+    if (!chatInput.trim() || !isAIEnabled) return
 
     const userMessage = {
       role: "user" as const,
@@ -167,23 +167,43 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
     setMessages(prev => [...prev, userMessage])
     setChatInput("")
 
-    // Simulate AI response with typing indicator
-    setTimeout(() => {
-      const responses = [
-        "I'll analyze that for you. Let me examine the code structure and suggest improvements...",
-        "Great question! Here's what I found and my recommendations:",
-        "I can help with that. Let me break down the solution step by step:",
-        "Interesting challenge! Here's my analysis and suggested approach:",
-      ]
+    try {
+      // Make actual API call to Blackbox
+      const response = await fetch('/api/blackbox/suggest-fix', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filePath: 'chat',
+          code: chatInput,
+          errors: [],
+          userId: user?.id || 'anonymous'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response')
+      }
+
+      const result = await response.json()
       
       const aiMessage = {
         role: "assistant" as const,
-        content: responses[Math.floor(Math.random() * responses.length)],
+        content: result.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that request. Please try again.",
         timestamp: new Date()
       }
       
       setMessages(prev => [...prev, aiMessage])
-    }, 1500)
+    } catch (error) {
+      console.error('AI response error:', error)
+      const errorMessage = {
+        role: "assistant" as const,
+        content: "I'm experiencing some technical difficulties. Please try again later.",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    }
   }
 
   const formatTime = (date: Date) => {

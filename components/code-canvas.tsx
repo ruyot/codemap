@@ -68,33 +68,38 @@ const moduleNodes: ModuleNode[] = [
 ]
 
 const generateNodes = (repoName: string, modules: ModuleNode[]): Node[] => {
-  const positions = [
-    { x: 100, y: 100 },
-    { x: 300, y: 100 },
-    { x: 500, y: 100 },
-    { x: 200, y: 250 },
-    { x: 400, y: 250 }
-  ]
+  // Calculate center offset to center nodes horizontally
+  const centerX = 450
+  const centerY = 200
+  const spacingX = 150
+  const spacingY = 150
 
-  return modules.map((module, index) => ({
-    id: module.id,
-    position: positions[index] || { x: 100 + (index * 150), y: 100 + Math.floor(index / 3) * 150 },
-    data: { 
-      label: `${repoName}/${module.label}`,
-      filePath: module.filePath,
-      type: module.type,
-      language: module.language
-    },
-    style: { 
-      background: module.type === 'directory' ? "#0066ff" : "#3b82f6", 
-      color: "white", 
-      border: "1px solid #1e40af",
-      borderRadius: "8px",
-      padding: "10px",
-      minWidth: "120px",
-      textAlign: "center"
-    },
-  }))
+  return modules.map((module, index) => {
+    const row = Math.floor(index / 3)
+    const col = index % 3
+    const x = centerX + col * spacingX - spacingX
+    const y = centerY + row * spacingY - spacingY
+
+    return {
+      id: module.id,
+      position: { x, y },
+      data: { 
+        label: `${repoName}/${module.label}`,
+        filePath: module.filePath,
+        type: module.type,
+        language: module.language
+      },
+      style: { 
+        background: module.type === 'directory' ? "#0066ff" : "#3b82f6", 
+        color: "white", 
+        border: "1px solid #1e40af",
+        borderRadius: "8px",
+        padding: "10px",
+        minWidth: "120px",
+        textAlign: "center"
+      },
+    }
+  })
 }
 
 const initialEdges = [
@@ -222,6 +227,7 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
           onNodeDoubleClick={onNodeDoubleClick}
           className="bg-gray-900"
           fitView
+          fitViewOptions={{ padding: 0.2 }}
           panOnDrag={mouseMode === "dragging"}
           nodesDraggable={mouseMode === "dragging"}
           nodesConnectable={mouseMode === "dragging"}

@@ -253,6 +253,7 @@ export default function Terminal({ onClose }: TerminalProps) {
         left: position.x,
         top: position.y,
         userSelect: isDragging.current || isResizing.current ? 'none' : 'auto',
+        color: 'white'
       }}
     >
       <Card className="h-full flex flex-col bg-transparent border-none">

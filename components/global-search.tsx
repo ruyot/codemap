@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface GlobalSearchProps {
   open: boolean
@@ -28,6 +29,7 @@ const mockFiles = [
 ]
 
 export default function GlobalSearch({ open, onOpenChange, files = mockFiles, onFileSelect }: GlobalSearchProps) {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredFiles, setFilteredFiles] = useState<string[]>(files)
 
@@ -47,31 +49,37 @@ export default function GlobalSearch({ open, onOpenChange, files = mockFiles, on
     if (onFileSelect) {
       onFileSelect(file)
     }
+    
+    // Extract module ID or use file path to generate one
+    const moduleId = file.replace(/[\/\.]/g, '_')
+    
+    // Navigate to the module route
+    router.push(`/module/${moduleId}`)
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-full">
+      <DialogContent className="max-w-lg w-full bg-gray-900 text-white border border-gray-700">
         <DialogHeader>
-          <DialogTitle>Global Search</DialogTitle>
+          <DialogTitle className="text-white">Global Search</DialogTitle>
         </DialogHeader>
         <Input
           placeholder="Search files..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           autoFocus
-          className="mb-4"
+          className="mb-4 bg-gray-800 text-white border-gray-700"
         />
         <ScrollArea className="max-h-60">
           {filteredFiles.length === 0 ? (
-            <p className="text-center text-gray-500">No files found.</p>
+            <p className="text-center text-gray-400">No files found.</p>
           ) : (
             filteredFiles.map((file) => (
               <Button
                 key={file}
                 variant="ghost"
-                className="w-full justify-start"
+                className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
                 onClick={() => handleFileClick(file)}
               >
                 {file}
