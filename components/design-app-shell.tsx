@@ -153,7 +153,106 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
     const currentInput = chatInput
     setChatInput("")
 
-    // Check if user has no files and wants to create something
+    // Check if user wants to create a file
+    const createFileRegex = /create\s+(?:a\s+)?file\s+(?:called\s+)?([^\s]+(?:\.[a-zA-Z0-9]+)?)/i
+    const createMatch = currentInput.match(createFileRegex)
+    
+    if (createMatch) {
+      const fileName = createMatch[1]
+      
+      // Extract content if provided
+      let content = "// New file created by AI Assistant\n"
+      const contentMatch = currentInput.match(/(?:with|containing|that says?)\s+(.+)/i)
+      if (contentMatch) {
+        content = contentMatch[1].replace(/["']/g, '')
+      }
+      
+      // Determine file type and add appropriate content
+      const extension = fileName.split('.').pop()?.toLowerCase()
+      switch (extension) {
+        case 'js':
+        case 'jsx':
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `// ${fileName}\nconsole.log('Hello from ${fileName}');`
+          break
+        case 'ts':
+        case 'tsx':
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `// ${fileName}\nconsole.log('Hello from ${fileName}');`
+          break
+        case 'py':
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `# ${fileName}\nprint('Hello from ${fileName}')`
+          break
+        case 'java':
+          const className = fileName.replace('.java', '')
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `public class ${className} {\n    public static void main(String[] args) {\n        System.out.println("Hello from ${className}");\n    }\n}`
+          break
+        case 'html':
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `<!DOCTYPE html>\n<html>\n<head>\n    <title>${fileName}</title>\n</head>\n<body>\n    <h1>Hello World</h1>\n</body>\n</html>`
+          break
+        case 'css':
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `/* ${fileName} */\nbody {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n}`
+          break
+        case 'md':
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `# ${fileName.replace('.md', '')}\n\nHello world`
+          break
+        default:
+          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `Hello world`
+      }
+
+      try {
+        // Create the file
+        const newFile = {
+          id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: fileName,
+          content: content,
+          type: extension || 'text',
+          size: content.length,
+          lastModified: new Date().toISOString(),
+          projectId: selectedRepo?.id || 'default',
+          userId: user?.id || 'anonymous'
+        }
+
+        // Update state
+        setUserFiles(prev => [...prev, newFile])
+        
+        // Store in localStorage
+        const updatedFiles = [...userFiles, newFile]
+        localStorage.setItem('uploadedFiles', JSON.stringify(updatedFiles))
+
+        // Create project if none exists
+        if (userProjects.length === 0) {
+          const project = {
+            id: `project_${Date.now()}`,
+            name: 'My Project',
+            fileCount: 1,
+            uploadedAt: new Date().toISOString(),
+            branch: 'main'
+          }
+          setUserProjects([project])
+          setSelectedRepo(project)
+          localStorage.setItem('uploadedProjects', JSON.stringify([project]))
+        }
+
+        const successMessage = {
+          role: "assistant" as const,
+          content: `✅ Successfully created ${fileName}! The file has been added to your project. You can now:\n\n• Click on the file in the Files tab to edit it\n• Ask me to modify or add more content\n• Create additional files\n\nWhat would you like to do next?`,
+          timestamp: new Date()
+        }
+        
+        setMessages(prev => [...prev, successMessage])
+        return
+      } catch (error) {
+        console.error('File creation error:', error)
+        const errorMessage = {
+          role: "assistant" as const,
+          content: `❌ Sorry, I couldn't create the file ${fileName}. Please try again.`,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, errorMessage])
+        return
+      }
+    }
+
+    // Check if user has no files and wants to create something (but didn't specify a filename)
     if (userFiles.length === 0 && (
       currentInput.toLowerCase().includes('create') ||
       currentInput.toLowerCase().includes('make') ||
@@ -162,7 +261,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
     )) {
       const helpMessage = {
         role: "assistant" as const,
-        content: "I'd be happy to help you create files! However, I need you to upload some files first so I can understand your project structure and provide better assistance. You can:\n\n1. Click 'Upload Files/Project' to add existing files\n2. Or tell me what type of project you want to create (React, Python, etc.) and I'll guide you through setting it up!",
+        content: "I'd be happy to help you create files! To create a file, just tell me:\n\n**\"Create a file called [filename]\"**\n\nFor example:\n• \"Create a file called app.js\"\n• \"Create a file called index.html\"\n• \"Create a file called readme.md and say hello world\"\n\nI can create files in many languages: JavaScript, TypeScript, Python, Java, HTML, CSS, and more!",
         timestamp: new Date()
       }
       setMessages(prev => [...prev, helpMessage])
@@ -305,7 +404,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             <TabsList className="bg-gray-800/50 border-b border-gray-700 rounded-none justify-start px-4 py-2">
               <TabsTrigger value="repos" className="data-[state=active]:bg-blue-600/20 data-[state=active]:text-blue-400">
                 <Folder className="h-4 w-4 mr-2" />
-                Repos
+                Explorer
               </TabsTrigger>
               <TabsTrigger value="files" className="data-[state=active]:bg-blue-600/20 data-[state=active]:text-blue-400">
                 <Code2 className="h-4 w-4 mr-2" />

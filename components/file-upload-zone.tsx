@@ -102,16 +102,43 @@ export default function FileUploadZone({
     setUploadedFiles(prev => [...prev, ...newFiles])
 
     try {
-      // Create FormData for actual upload
-      const formData = new FormData()
-      Array.from(files).forEach(file => {
-        formData.append('files', file)
-      })
+      // Process files efficiently without API call
+      const processedFiles = []
+      
+      for (let i = 0; i < newFiles.length; i++) {
+        const uploadFile = newFiles[i]
+        const file = uploadFile.file
+        
+        // Validate file
+        if (file.size > maxFileSize) {
+          setUploadedFiles(prev => 
+            prev.map(f => 
+              f.id === uploadFile.id 
+                ? { ...f, status: 'error' as const, error: `File too large (max ${formatFileSize(maxFileSize)})` }
+                : f
+            )
+          )
+          continue
+        }
 
-      // Update progress for all files
-      for (const uploadFile of newFiles) {
-        for (let progress = 0; progress <= 90; progress += 10) {
-          await new Promise(resolve => setTimeout(resolve, 50))
+        // Check file type if restrictions exist
+        if (acceptedTypes.length > 0) {
+          const extension = file.name.split('.').pop()?.toLowerCase()
+          if (extension && !acceptedTypes.includes(extension)) {
+            setUploadedFiles(prev => 
+              prev.map(f => 
+                f.id === uploadFile.id 
+                  ? { ...f, status: 'error' as const, error: `File type not supported` }
+                  : f
+              )
+            )
+            continue
+          }
+        }
+
+        // Simulate upload progress
+        for (let progress = 0; progress <= 90; progress += 20) {
+          await new Promise(resolve => setTimeout(resolve, 30))
           setUploadedFiles(prev => 
             prev.map(f => 
               f.id === uploadFile.id 
@@ -120,31 +147,52 @@ export default function FileUploadZone({
             )
           )
         }
+
+        // Read file content for text files
+        let content = null
+        if (file.type.startsWith('text/') || 
+            file.name.endsWith('.js') || 
+            file.name.endsWith('.ts') || 
+            file.name.endsWith('.jsx') || 
+            file.name.endsWith('.tsx') || 
+            file.name.endsWith('.py') || 
+            file.name.endsWith('.java') || 
+            file.name.endsWith('.cpp') || 
+            file.name.endsWith('.c') || 
+            file.name.endsWith('.html') || 
+            file.name.endsWith('.css') || 
+            file.name.endsWith('.json') || 
+            file.name.endsWith('.md')) {
+          try {
+            content = await file.text()
+          } catch (error) {
+            console.warn('Could not read file content:', error)
+          }
+        }
+
+        processedFiles.push({
+          id: uploadFile.id,
+          name: file.name,
+          type: file.type || getFileTypeFromExtension(file.name),
+          size: file.size,
+          lastModified: new Date(file.lastModified).toISOString(),
+          content: content,
+          webkitRelativePath: (file as any).webkitRelativePath || file.name
+        })
+
+        // Mark as success
+        setUploadedFiles(prev => 
+          prev.map(f => 
+            f.id === uploadFile.id 
+              ? { ...f, status: 'success' as const, progress: 100 }
+              : f
+          )
+        )
       }
 
-      // Make actual API call
-      const response = await fetch('/api/project/upload', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        throw new Error('Upload failed')
-      }
-
-      const result = await response.json()
-
-      // Mark all files as success
-      setUploadedFiles(prev => 
-        prev.map(f => ({ ...f, status: 'success' as const, progress: 100 }))
-      )
-
-      // Call callbacks with the uploaded project data
+      // Call callbacks with processed files
       onFileUpload?.(files)
       onProjectUpload?.(files)
-
-      // Store project data in localStorage for now (could be moved to context/state management)
-      localStorage.setItem('uploadedProject', JSON.stringify(result))
 
     } catch (error) {
       console.error('Upload error:', error)
@@ -158,7 +206,27 @@ export default function FileUploadZone({
     }
 
     setIsUploading(false)
-  }, [onFileUpload, onProjectUpload])
+  }, [onFileUpload, onProjectUpload, maxFileSize, acceptedTypes])
+
+  const getFileTypeFromExtension = (fileName: string): string => {
+    const extension = fileName.split('.').pop()?.toLowerCase()
+    const typeMap: Record<string, string> = {
+      'js': 'application/javascript',
+      'ts': 'application/typescript',
+      'jsx': 'application/javascript',
+      'tsx': 'application/typescript',
+      'py': 'text/x-python',
+      'java': 'text/x-java-source',
+      'cpp': 'text/x-c++src',
+      'c': 'text/x-csrc',
+      'html': 'text/html',
+      'css': 'text/css',
+      'json': 'application/json',
+      'md': 'text/markdown',
+      'txt': 'text/plain'
+    }
+    return typeMap[extension || ''] || 'text/plain'
+  }
 
   const { dragState, getDropZoneProps } = useDragDrop({
     onFileUpload: handleFileUpload,
