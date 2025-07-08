@@ -35,11 +35,11 @@ import {
 } from "lucide-react"
 
 interface DragDropCanvasProps {
-  selectedRepo: {
+  selectedRepo?: {
     name: string
     branch: string
     status: string
-  }
+  } | null
   onFileSelect?: (fileId: string, filePath: string) => void
   onFileUpload?: (files: FileList) => void
 }
@@ -260,7 +260,7 @@ export default function DragDropCanvas({
   onFileUpload 
 }: DragDropCanvasProps) {
   const router = useRouter()
-  const [nodes, setNodes, onNodesChange] = useNodesState(generateNodes(selectedRepo.name, moduleNodes))
+  const [nodes, setNodes, onNodesChange] = useNodesState(generateNodes(selectedRepo?.name || 'Project', moduleNodes))
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [selectedNodes, setSelectedNodes] = useState<string[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
@@ -365,8 +365,8 @@ export default function DragDropCanvas({
 
   // Update nodes when repo changes
   useEffect(() => {
-    setNodes(generateNodes(selectedRepo.name, moduleNodes))
-  }, [selectedRepo.name, setNodes])
+    setNodes(generateNodes(selectedRepo?.name || 'Project', moduleNodes))
+  }, [selectedRepo?.name, setNodes])
 
   return (
     <div 
@@ -387,7 +387,7 @@ export default function DragDropCanvas({
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <GitBranch className="h-5 w-5 text-blue-400" />
-              {selectedRepo.name} - {selectedRepo.branch}
+              {selectedRepo?.name || 'Project'} - {selectedRepo?.branch || 'main'}
             </h2>
             <Badge className="bg-green-600/20 text-green-400">
               {selectedNodes.length.toString()} selected

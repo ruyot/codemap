@@ -13,6 +13,7 @@ import {
   addEdge,
   type Connection,
   type Node,
+  type Edge,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { ModuleNode } from "@/types"
@@ -25,47 +26,16 @@ interface CodeCanvasProps {
   }
 }
 
-// Structured module mapping
-const moduleNodes: ModuleNode[] = [
-  {
-    id: "1",
-    label: "App.tsx",
-    filePath: "App.tsx",
-    type: "file",
-    language: "typescript",
-    size: 1024
-  },
-  {
-    id: "2",
-    label: "components/",
-    filePath: "components",
-    type: "directory",
-    size: 0
-  },
-  {
-    id: "3",
-    label: "utils/",
-    filePath: "utils",
-    type: "directory",
-    size: 0
-  },
-  {
-    id: "4",
-    label: "Header.tsx",
-    filePath: "components/Header.tsx",
-    type: "file",
-    language: "typescript",
-    size: 2048
-  },
-  {
-    id: "5",
-    label: "Footer.tsx",
-    filePath: "components/Footer.tsx",
-    type: "file",
-    language: "typescript",
-    size: 1536
+// Get user files from localStorage
+const getUserFiles = () => {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem('uploadedFiles')
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
   }
-]
+}
 
 const generateNodes = (repoName: string, modules: ModuleNode[]): Node[] => {
   // Calculate center offset to center nodes horizontally
@@ -111,10 +81,54 @@ const initialEdges = [
 
 export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
   const router = useRouter()
-  const [nodes, setNodes, onNodesChange] = useNodesState(generateNodes(selectedRepo.name, moduleNodes))
+  const [userFiles, setUserFiles] = useState<any[]>([])
+  
+  // Initialize with empty arrays but proper typing
+  const initialNodes: Node[] = []
+  const initialEdges: Edge[] = []
+  
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [mouseMode, setMouseMode] = useState<"selection" | "dragging">("selection")
   const [isWKeyPressed, setIsWKeyPressed] = useState(false)
+
+  // Load user files and generate nodes
+  useEffect(() => {
+    const files = getUserFiles()
+    setUserFiles(files)
+    
+    if (files.length > 0) {
+      const fileNodes = files.map((file: any, index: number) => ({
+        id: file.id,
+        label: file.name,
+        filePath: file.name,
+        type: "file",
+        language: file.type || "text",
+        size: file.size || 0
+      }))
+      
+      const generatedNodes = generateNodes(selectedRepo?.name || 'Project', fileNodes)
+      setNodes(generatedNodes)
+      
+      // Generate simple edges connecting files (only if we have more than 1 file)
+      if (fileNodes.length > 1) {
+        const generatedEdges = fileNodes.slice(1).map((file: any, index: number) => ({
+          id: `e${fileNodes[0].id}-${file.id}`,
+          source: fileNodes[0].id,
+          target: file.id,
+          animated: true,
+          style: { stroke: '#3b82f6', strokeWidth: 2 }
+        }))
+        setEdges(generatedEdges)
+      } else {
+        setEdges([])
+      }
+    } else {
+      // Show empty state
+      setNodes([])
+      setEdges([])
+    }
+  }, [selectedRepo, setNodes, setEdges])
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges])
 
@@ -204,59 +218,92 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
 
   // Update nodes when repo changes
   useEffect(() => {
-    setNodes(generateNodes(selectedRepo.name, moduleNodes))
-  }, [selectedRepo.name, setNodes])
+    const files = getUserFiles()
+    if (files.length > 0 && selectedRepo) {
+      const fileNodes = files.map((file: any) => ({
+        id: file.id,
+        label: file.name,
+        filePath: file.name,
+        type: "file",
+        language: file.type || "text",
+        size: file.size || 0
+      }))
+      setNodes(generateNodes(selectedRepo.name, fileNodes))
+    }
+  }, [selectedRepo, setNodes])
 
   return (
     <div className="w-full h-full bg-gray-900 relative">
       <div className="p-4 border-b border-gray-700 bg-gray-800">
         <h2 className="text-lg font-semibold text-white">
-          {selectedRepo.name} - {selectedRepo.branch}
+          {selectedRepo?.name || 'Project'} - {selectedRepo?.branch || 'main'}
         </h2>
-        <p className="text-sm text-gray-400">Double-click or hold W + click any file node to open in code editor</p>
+        <p className="text-sm text-gray-400">
+          {userFiles.length > 0 
+            ? "Double-click or hold W + click any file node to open in code editor"
+            : "Upload files to see your project structure here"
+          }
+        </p>
       </div>
 
       <div className="h-full">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onNodeDoubleClick={onNodeDoubleClick}
-          className="bg-gray-900"
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          panOnDrag={mouseMode === "dragging"}
-          nodesDraggable={mouseMode === "dragging"}
-          nodesConnectable={mouseMode === "dragging"}
-        >
-          <Controls className="bg-gray-800 border-gray-600" />
-          <MiniMap className="bg-gray-800" nodeColor="#3b82f6" />
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
-        </ReactFlow>
+        {userFiles.length > 0 ? (
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onNodeDoubleClick={onNodeDoubleClick}
+            className="bg-gray-900"
+            fitView
+            fitViewOptions={{ padding: 0.1, minZoom: 0.8, maxZoom: 1.2 }}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            panOnDrag={mouseMode === "dragging"}
+            nodesDraggable={mouseMode === "dragging"}
+            nodesConnectable={mouseMode === "dragging"}
+          >
+            <Controls className="bg-gray-800 border-gray-600" />
+            <MiniMap className="bg-gray-800" nodeColor="#3b82f6" />
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
+          </ReactFlow>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-gray-400">
+              <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gray-800 flex items-center justify-center">
+                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">No Files Uploaded</h3>
+              <p className="text-gray-500 mb-4">Upload files to visualize your project structure</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Mouse Mode Toggle */}
-      <div className="absolute top-4 right-4 bg-gray-800 bg-opacity-80 rounded-md p-2 flex space-x-2 text-white text-sm select-none z-10 items-center">
-        <button
-          className={`px-3 py-1 rounded flex items-center gap-1 ${mouseMode === "selection" ? "bg-blue-600" : "bg-gray-600"}`}
-          onClick={() => setMouseMode("selection")}
-          title="Selection Mode"
-        >
-          <span>Selection</span>
-          <span className="text-lg font-bold">+</span>
-        </button>
-        <button
-          className={`px-3 py-1 rounded flex items-center gap-1 ${mouseMode === "dragging" ? "bg-blue-600" : "bg-gray-600"}`}
-          onClick={() => setMouseMode("dragging")}
-          title="Dragging Mode"
-        >
-          <span>Dragging</span>
-          <span className="text-lg font-bold">-</span>
-        </button>
-      </div>
+      {/* Mouse Mode Toggle - only show when there are files */}
+      {userFiles.length > 0 && (
+        <div className="absolute top-4 right-4 bg-gray-800 bg-opacity-80 rounded-md p-2 flex space-x-2 text-white text-sm select-none z-10 items-center">
+          <button
+            className={`px-3 py-1 rounded flex items-center gap-1 ${mouseMode === "selection" ? "bg-blue-600" : "bg-gray-600"}`}
+            onClick={() => setMouseMode("selection")}
+            title="Selection Mode"
+          >
+            <span>Selection</span>
+            <span className="text-lg font-bold">+</span>
+          </button>
+          <button
+            className={`px-3 py-1 rounded flex items-center gap-1 ${mouseMode === "dragging" ? "bg-blue-600" : "bg-gray-600"}`}
+            onClick={() => setMouseMode("dragging")}
+            title="Dragging Mode"
+          >
+            <span>Dragging</span>
+            <span className="text-lg font-bold">-</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

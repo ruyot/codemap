@@ -46,72 +46,38 @@ interface CyberpunkAppShellProps {
   onSignOut: () => void
 }
 
-const mockRepos = [
-  { 
-    name: "my-react-app", 
-    owner: "user",
-    branch: "main", 
-    status: "active",
-    lastCommit: "2 hours ago",
-    commits: 42,
-    contributors: 3
-  },
-  { 
-    name: "api-server", 
-    owner: "user",
-    branch: "develop", 
-    status: "modified",
-    lastCommit: "1 day ago",
-    commits: 128,
-    contributors: 5
-  },
-  { 
-    name: "mobile-app", 
-    owner: "user",
-    branch: "feature/auth", 
-    status: "clean",
-    lastCommit: "3 days ago",
-    commits: 89,
-    contributors: 2
-  },
-  { 
-    name: "data-pipeline", 
-    owner: "user",
-    branch: "main", 
-    status: "active",
-    lastCommit: "5 hours ago",
-    commits: 67,
-    contributors: 4
-  },
-]
+// Real user data will be loaded from localStorage and API
+const getStoredProjects = () => {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem('uploadedProjects')
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
 
-const mockMessages = [
-  { 
-    role: "assistant", 
-    content: "🚀 Welcome to Code Map! I'm your AI coding assistant. I can help you analyze code, suggest improvements, and fix bugs. What would you like to work on?",
-    timestamp: new Date(Date.now() - 300000)
-  },
-  { 
-    role: "user", 
-    content: "Can you help me refactor this React component to use hooks?",
-    timestamp: new Date(Date.now() - 240000)
-  },
-  {
-    role: "assistant",
-    content: "Absolutely! I'd be happy to help you refactor your component to use React hooks. Please share the component code, and I'll provide a modern hooks-based version with explanations.",
-    timestamp: new Date(Date.now() - 180000)
-  },
-]
+const getStoredFiles = () => {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem('uploadedFiles')
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
 
 export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps) {
   const router = useRouter()
-  const [selectedRepo, setSelectedRepo] = useState(mockRepos[0])
+  const [userProjects, setUserProjects] = useState<any[]>([])
+  const [userFiles, setUserFiles] = useState<any[]>([])
+  const [selectedRepo, setSelectedRepo] = useState<any>(null)
   const [chatInput, setChatInput] = useState("")
-  const [messages, setMessages] = useState(mockMessages)
+  const [messages, setMessages] = useState<any[]>([])
   const [showCommandPalette, setShowCommandPalette] = useState(false)
-  const [activeTab, setActiveTab] = useState("repos")
+  const [activeTab, setActiveTab] = useState("files")
   const [isAIEnabled, setIsAIEnabled] = useState(true)
-  const [notifications, setNotifications] = useState(3)
+  const [notifications, setNotifications] = useState(0)
   const [user, setUser] = useState<any>(null)
   const [showTerminal, setShowTerminal] = useState(false)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
@@ -119,6 +85,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   const [leftPanelMinimized, setLeftPanelMinimized] = useState(false)
   const [rightPanelMinimized, setRightPanelMinimized] = useState(false)
 
+  // Load user data on component mount
   useEffect(() => {
     const session = supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -127,6 +94,24 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
+
+    // Load stored projects and files
+    const projects = getStoredProjects()
+    const files = getStoredFiles()
+    setUserProjects(projects)
+    setUserFiles(files)
+
+    // Initialize AI assistant with welcome message if no messages exist
+    if (messages.length === 0) {
+      const welcomeMessage = {
+        role: "assistant" as const,
+        content: files.length > 0 
+          ? "Welcome back! I can see you have uploaded files. I can help you analyze your code, suggest improvements, create new files, and fix bugs. What would you like to work on?"
+          : "Welcome to your AI coding assistant! Please upload some files first, or I can help you create new files. What would you like to build today?",
+        timestamp: new Date()
+      }
+      setMessages([welcomeMessage])
+    }
 
     return () => {
       authListener?.subscription.unsubscribe()
@@ -165,9 +150,32 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
     }
 
     setMessages(prev => [...prev, userMessage])
+    const currentInput = chatInput
     setChatInput("")
 
+    // Check if user has no files and wants to create something
+    if (userFiles.length === 0 && (
+      currentInput.toLowerCase().includes('create') ||
+      currentInput.toLowerCase().includes('make') ||
+      currentInput.toLowerCase().includes('build') ||
+      currentInput.toLowerCase().includes('new file')
+    )) {
+      const helpMessage = {
+        role: "assistant" as const,
+        content: "I'd be happy to help you create files! However, I need you to upload some files first so I can understand your project structure and provide better assistance. You can:\n\n1. Click 'Upload Files/Project' to add existing files\n2. Or tell me what type of project you want to create (React, Python, etc.) and I'll guide you through setting it up!",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, helpMessage])
+      return
+    }
+
     try {
+      // Prepare context with user's files
+      const fileContext = userFiles.map(file => `${file.name}: ${file.type || 'file'}`).join('\n')
+      const contextualPrompt = userFiles.length > 0 
+        ? `User has these files: ${fileContext}\n\nUser request: ${currentInput}`
+        : currentInput
+
       // Make actual API call to Blackbox
       const response = await fetch('/api/blackbox/suggest-fix', {
         method: 'POST',
@@ -176,7 +184,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
         },
         body: JSON.stringify({
           filePath: 'chat',
-          code: chatInput,
+          code: contextualPrompt,
           errors: [],
           userId: user?.id || 'anonymous'
         })
@@ -231,12 +239,14 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
               </h1>
             </div>
             
-            <div className="hidden md:flex items-center gap-2 text-sm text-pink-300">
-              <span>•</span>
-              <span>{selectedRepo.name}</span>
-              <GitBranch className="h-3 w-3" />
-              <span>{selectedRepo.branch}</span>
-            </div>
+            {selectedRepo && (
+              <div className="hidden md:flex items-center gap-2 text-sm text-pink-300">
+                <span>•</span>
+                <span>{selectedRepo.name}</span>
+                <GitBranch className="h-3 w-3" />
+                <span>{selectedRepo.branch || 'main'}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -310,45 +320,45 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             <TabsContent value="repos" className="flex-1 m-0">
               <ScrollArea className="h-full p-4">
                 <div className="space-y-3">
-                  {mockRepos.map((repo) => (
-                    <Card
-                      key={repo.name}
-                      className={`cursor-pointer transition-all duration-300 hover:scale-105 ${
-                        selectedRepo.name === repo.name
-                          ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-blue-500/50 shadow-lg shadow-blue-500/20"
-                          : "bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 hover:border-gray-500"
-                      }`}
-                      onClick={() => setSelectedRepo(repo)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Folder className="h-4 w-4 text-blue-400" />
-                          <span className="font-medium">{repo.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                          <GitBranch className="h-3 w-3" />
-                          <span>{repo.branch}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>{repo.commits} commits</span>
-                          <span>{repo.contributors} contributors</span>
-                        </div>
-                        <div className="mt-2">
-                          <Badge
-                            className={`text-xs ${
-                              repo.status === "active"
-                                ? "bg-green-600/20 text-green-400 border-green-500/30"
-                                : repo.status === "modified"
-                                  ? "bg-yellow-600/20 text-yellow-400 border-yellow-500/30"
-                                  : "bg-gray-600/20 text-gray-400 border-gray-500/30"
-                            }`}
-                          >
-                            {repo.status}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {userProjects.length > 0 ? (
+                    userProjects.map((project: any) => (
+                      <Card
+                        key={project.id}
+                        className={`cursor-pointer transition-all duration-300 hover:scale-105 ${
+                          selectedRepo?.id === project.id
+                            ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-blue-500/50 shadow-lg shadow-blue-500/20"
+                            : "bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 hover:border-gray-500"
+                        }`}
+                        onClick={() => setSelectedRepo(project)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Folder className="h-4 w-4 text-blue-400" />
+                            <span className="font-medium">{project.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
+                            <GitBranch className="h-3 w-3" />
+                            <span>{project.branch || 'main'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>{project.fileCount || 0} files</span>
+                            <span>{new Date(project.uploadedAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="mt-2">
+                            <Badge className="text-xs bg-green-600/20 text-green-400 border-green-500/30">
+                              active
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-400 py-8">
+                      <Folder className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No projects uploaded yet</p>
+                      <p className="text-sm mt-2">Upload files to create your first project</p>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -364,11 +374,34 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                     Upload Files/Project
                   </Button>
                   
-                  <div className="text-center text-gray-400 py-8">
-                    <Code2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Drag files here or use upload button</p>
-                    <p className="text-sm mt-2">File tree will appear after upload</p>
-                  </div>
+                  {userFiles.length > 0 ? (
+                    <div className="space-y-2">
+                      {userFiles.map((file: any) => (
+                        <Card
+                          key={file.id}
+                          className="cursor-pointer transition-all duration-300 hover:scale-105 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 hover:border-gray-500"
+                          onClick={() => router.push(`/module/${file.id}`)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2">
+                              <Code2 className="h-4 w-4 text-blue-400" />
+                              <span className="font-medium text-sm">{file.name}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                              <span>{file.type || 'file'}</span>
+                              <span>{file.size ? `${Math.round(file.size / 1024)}KB` : ''}</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-400 py-8">
+                      <Code2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No files uploaded yet</p>
+                      <p className="text-sm mt-2">Upload files to start coding</p>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -464,7 +497,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             </div>
           </div>
 
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 p-4 h-[calc(100vh-300px)]">
             <div className="space-y-4">
               {messages.map((message, index) => (
                 <div
@@ -485,7 +518,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                       {formatTime(message.timestamp)}
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 </div>
               ))}
             </div>
@@ -562,13 +595,52 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
             </div>
             
             <FileUploadZone
-              onFileUpload={(files) => {
+              onFileUpload={async (files: FileList) => {
                 console.log('Files uploaded:', files)
+                
+                // Convert FileList to Array and process uploaded files
+                const filesArray = Array.from(files)
+                const processedFiles = filesArray.map((file: File) => ({
+                  id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  uploadedAt: new Date().toISOString(),
+                  content: null // Will be populated when file is opened
+                }))
+
+                // Update state
+                setUserFiles(prev => [...prev, ...processedFiles])
+                
+                // Store in localStorage
+                const updatedFiles = [...userFiles, ...processedFiles]
+                localStorage.setItem('uploadedFiles', JSON.stringify(updatedFiles))
+
+                // Create/update project
+                const projectId = `project_${Date.now()}`
+                const project = {
+                  id: projectId,
+                  name: files.length > 1 ? `Project ${new Date().toLocaleDateString()}` : files[0].name.split('.')[0],
+                  fileCount: files.length,
+                  uploadedAt: new Date().toISOString(),
+                  branch: 'main'
+                }
+
+                setUserProjects(prev => [...prev, project])
+                localStorage.setItem('uploadedProjects', JSON.stringify([...userProjects, project]))
+
+                // Update AI assistant with success message
+                const successMessage = {
+                  role: "assistant" as const,
+                  content: `Great! I've successfully uploaded ${files.length} file(s). I can now help you analyze your code, suggest improvements, create new files, and fix bugs. What would you like to work on?`,
+                  timestamp: new Date()
+                }
+                setMessages(prev => [...prev, successMessage])
+
                 setShowFileUpload(false)
-                // Handle file upload logic
               }}
               acceptedTypes={['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'html', 'css', 'json', 'md']}
-              maxFileSize={50 * 1024 * 1024} // 50MB
+              maxFileSize={50 * 1024 * 1024}
               maxFiles={100}
             />
           </div>
