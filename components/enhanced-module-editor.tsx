@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
 import React, { useState, useRef } from 'react'
-import { Editor, OnMount } from '@monaco-editor/react'
+import { Editor } from '@monaco-editor/react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { FileText, Bug, Sparkles, History, Eye, Wand2 } from 'lucide-react'
 
 // Mock data and types for now
 interface Module {
+
   language?: string;
 }
 
@@ -29,18 +30,14 @@ interface Suggestion {
 const EnhancedModuleEditor = () => {
   const [showPreview, setShowPreview] = useState(true);
   const [activeTab, setActiveTab] = useState('editor');
-  const [errors] = useState<Error[]>([]);
-  const [suggestions] = useState<Suggestion[]>([]);
+  const [errors, setErrors] = useState<Error[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [code, setCode] = useState('// Start coding here...');
   const editorRef = useRef(null);
   const module: Module = { language: 'typescript' };
 
   const applySuggestion = (suggestion: Suggestion) => {
     console.log('Applying suggestion:', suggestion);
-  };
-
-  const handleEditorDidMount: OnMount = (editor) => {
-    editorRef.current = editor;
   };
 
   return (
@@ -90,7 +87,7 @@ const EnhancedModuleEditor = () => {
                 language={module.language || "typescript"}
                 value={code}
                 onChange={(value) => setCode(value || "")}
-                onMount={handleEditorDidMount}
+                onMount={(editor) => { editorRef.current = editor as any }}
                 theme="vs-dark"
                 options={{
                   fontSize: 14,
@@ -143,7 +140,7 @@ const EnhancedModuleEditor = () => {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
+                      </card>
                     ))}
                   </div>
                 )}
