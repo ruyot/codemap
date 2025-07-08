@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useCallback, useEffect, useState, useRef, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import {
   ReactFlow,
   MiniMap,
@@ -24,12 +23,8 @@ import {
   Folder, 
   File, 
   GitBranch, 
-  GitMerge, 
   Upload,
-  ZoomIn,
-  ZoomOut,
   Maximize2,
-  Minimize2,
   Eye,
   Code2
 } from "lucide-react"
@@ -44,10 +39,17 @@ interface DragDropCanvasProps {
   onFileUpload?: (files: FileList) => void
 }
 
+interface DraggableNodeData {
+  label: string;
+  filePath: string;
+  type: 'file' | 'directory';
+  language?: string;
+  size?: number;
+}
+
 // Enhanced node types with drag and drop capabilities
-const DraggableFileNode = React.memo(({ data, selected }: { data: any, selected: boolean }) => {
+const DraggableFileNode = React.memo(({ data, selected }: { data: DraggableNodeData, selected: boolean }) => {
   const [isHovered, setIsHovered] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
 
   return (
     <motion.div
@@ -132,11 +134,6 @@ const DraggableFileNode = React.memo(({ data, selected }: { data: any, selected:
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Drag indicator */}
-      {isDragging && (
-        <div className="absolute inset-0 bg-blue-500/20 rounded-lg border-2 border-blue-400 border-dashed" />
-      )}
     </motion.div>
   )
 })
@@ -259,12 +256,10 @@ export default function DragDropCanvas({
   onFileSelect, 
   onFileUpload 
 }: DragDropCanvasProps) {
-  const router = useRouter()
   const [nodes, setNodes, onNodesChange] = useNodesState(generateNodes(selectedRepo?.name || 'Project', moduleNodes))
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [selectedNodes, setSelectedNodes] = useState<string[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
-  const [isSelecting, setIsSelecting] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
 
   // Performance optimization: Memoize expensive calculations
@@ -350,7 +345,7 @@ export default function DragDropCanvas({
     )
   }, [setNodes])
 
-  const onNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeDragStop = useCallback((_event: React.MouseEvent, _node: Node) => {
     // Reset opacity after drag
     setNodes((nodes) =>
       nodes.map((n) => ({
