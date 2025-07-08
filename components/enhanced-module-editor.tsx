@@ -31,9 +31,10 @@ interface Suggestion {
 
 interface EnhancedModuleEditorProps {
   moduleId?: string;
+  initialFileId?: string;
 }
 
-const EnhancedModuleEditor = ({ moduleId }: EnhancedModuleEditorProps) => {
+const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorProps) => {
   const [showPreview, setShowPreview] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(true);
@@ -56,11 +57,31 @@ const EnhancedModuleEditor = ({ moduleId }: EnhancedModuleEditorProps) => {
       // Load initial files
       const loadFiles = async () => {
         await manager.loadFiles();
-        setFiles(manager.getFiles());
+        const loadedFiles = manager.getFiles();
+        setFiles(loadedFiles);
+        // If initialFileId is set, find and select that file
+        if (initialFileId) {
+          // Recursively search for the file in the tree
+          const findFileById = (files: FileNode[]): FileNode | null => {
+            for (const file of files) {
+              if (file.id === initialFileId) return file;
+              if (file.children) {
+                const found = findFileById(file.children);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+          const fileToSelect = findFileById(loadedFiles);
+          if (fileToSelect) {
+            setCurrentFile(fileToSelect);
+            setCode(fileToSelect.content || '');
+          }
+        }
       };
       loadFiles();
     }
-  }, [moduleId]);
+  }, [moduleId, initialFileId]);
 
   const applySuggestion = (suggestion: Suggestion) => {
     console.log('Applying suggestion:', suggestion);
@@ -244,29 +265,36 @@ const EnhancedModuleEditor = ({ moduleId }: EnhancedModuleEditorProps) => {
             </TabsList>
 
             <TabsContent value="editor" className="flex-1 m-0 overflow-auto">
-              <Editor
-                height="100%"
-                language={currentFile?.language || module.language || "typescript"}
-                value={code}
-                onChange={(value) => setCode(value || "")}
-                onMount={(editor) => { editorRef.current = editor as any }}
-                theme="vs-dark"
-                options={{
-                  fontSize: 14,
-                  minimap: { enabled: true },
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 2,
-                  wordWrap: "on",
-                  lineNumbers: "on",
-                  renderLineHighlight: "all",
-                  cursorBlinking: "smooth",
-                  smoothScrolling: true,
-                  contextmenu: true,
-                  quickSuggestions: true,
-                  suggestOnTriggerCharacters: true
-                }}
-              />
+              {currentFile ? (
+                <Editor
+                  height="100%"
+                  language={currentFile?.language || module.language || "typescript"}
+                  value={code}
+                  onChange={(value) => setCode(value || "")}
+                  onMount={(editor) => { editorRef.current = editor as any }}
+                  theme="vs-dark"
+                  options={{
+                    fontSize: 14,
+                    minimap: { enabled: true },
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 2,
+                    wordWrap: "on",
+                    lineNumbers: "on",
+                    renderLineHighlight: "all",
+                    cursorBlinking: "smooth",
+                    smoothScrolling: true,
+                    contextmenu: true,
+                    quickSuggestions: true,
+                    suggestOnTriggerCharacters: true
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <p>No file selected.</p>
+                  <p className="text-xs mt-2">Select a file from the explorer or upload one to get started!</p>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="errors" className="flex-1 m-0">

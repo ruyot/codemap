@@ -479,7 +479,10 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                         <Card
                           key={file.id}
                           className="cursor-pointer transition-all duration-300 hover:scale-105 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 hover:border-gray-500"
-                          onClick={() => router.push(`/module/${file.id}`)}
+                          onClick={() => {
+                            const projectId = file.projectId || selectedRepo?.id || 'default';
+                            router.push(`/module/${projectId}?fileId=${file.id}`);
+                          }}
                         >
                           <CardContent className="p-3">
                             <div className="flex items-center gap-2">

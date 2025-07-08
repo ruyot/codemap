@@ -269,7 +269,14 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
       {/* File Tree */}
       <ScrollArea className="flex-1">
         <div className="p-1">
-          {files.map(file => renderFileNode(file))}
+          {files.length === 0 ? (
+            <div className="text-center text-gray-500 mt-8">
+              <p>No files yet.</p>
+              <p className="text-xs mt-2">Upload or create a file to get started</p>
+            </div>
+          ) : (
+            files.map(file => renderFileNode(file))
+          )}
         </div>
       </ScrollArea>
     </div>

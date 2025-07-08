@@ -83,64 +83,7 @@ export class FileManager {
 
   // Get default files for new projects
   private getDefaultFiles(): FileNode[] {
-    return [
-      {
-        id: '1',
-        name: 'package.json',
-        type: 'file',
-        path: 'package.json',
-        content: JSON.stringify({
-          name: "my-project",
-          version: "0.1.0",
-          private: true,
-          scripts: {
-            dev: "next dev",
-            build: "next build",
-            start: "next start"
-          },
-          dependencies: {
-            "next": "latest",
-            "react": "latest",
-            "react-dom": "latest"
-          }
-        }, null, 2),
-        language: 'json',
-        size: 0,
-        lastModified: new Date(),
-        createdAt: new Date()
-      },
-      {
-        id: '2',
-        name: 'src',
-        type: 'directory',
-        path: 'src',
-        children: [
-          {
-            id: '3',
-            name: 'App.tsx',
-            type: 'file',
-            path: 'src/App.tsx',
-            content: `import React from 'react';
-
-function App() {
-  return (
-    <div className="App">
-      <h1>Hello World!</h1>
-    </div>
-  );
-}
-
-export default App;`,
-            language: 'typescript',
-            size: 0,
-            lastModified: new Date(),
-            createdAt: new Date()
-          }
-        ],
-        lastModified: new Date(),
-        createdAt: new Date()
-      }
-    ]
+    return []
   }
 
   // Create a new file
