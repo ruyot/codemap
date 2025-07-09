@@ -3,12 +3,16 @@
 export const bb = {
   chat: {
     async create({ sid, prompt, agent }: { sid: string; prompt: string; agent: string }) {
+      // Ensure the API key is available (server-side only)
+      const apiKey = process.env.BLACKBOX_API_KEY
+      if (!apiKey) {
+        throw new Error("BLACKBOX_API_KEY is not set. Please set it in your environment variables (e.g., Netlify dashboard or .env file).")
+      }
       const res = await fetch("https://api.blackboxai.dev/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // The API key should be set in the API route, not here if this is ever used client-side
-          ...(process.env.BLACKBOX_API_KEY ? { "Authorization": `Bearer ${process.env.BLACKBOX_API_KEY}` } : {})
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({ sid, prompt, agent }),
       })
