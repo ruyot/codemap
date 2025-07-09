@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 // Mock Fetch.ai uAgent implementation
 // In a real implementation, this would connect to the Fetch.ai network
 
+interface RequestContext {
+  filePath?: string;
+  repo?: {
+    name: string;
+    branch: string;
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, thread } = await request.json()
@@ -33,7 +41,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function refinePromptWithRules(userRequest: string, context?: any): Promise<string> {
+async function refinePromptWithRules(userRequest: string, context?: RequestContext): Promise<string> {
   let refined = userRequest.trim()
 
   // Rule 1: Add technical context if missing
@@ -100,7 +108,7 @@ class PromptRefinementAgent {
     ]
   }
 
-  async processRequest(request: string, context?: any): Promise<{
+  async processRequest(request: string, context?: RequestContext): Promise<{
     refined: string
     confidence: number
     reasoning: string[]

@@ -35,8 +35,9 @@ interface DragDropCanvasProps {
     branch: string
     status: string
   } | null
-  onFileSelect?: (fileId: string, filePath: string) => void
+  onFileSelect?: (fileId: string, filePath: string, preview?: boolean) => void
   onFileUpload?: (files: FileList) => void
+  onFileContextMenu?: (fileId: string, x: number, y: number) => void
 }
 
 interface DraggableNodeData {
@@ -279,6 +280,13 @@ export default function DragDropCanvas({
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     event.stopPropagation()
     
+    if (event.button === 2) { // Right click
+      if (typeof onFileContextMenu === 'function') {
+        onFileContextMenu(node.id, event.clientX, event.clientY)
+      }
+      return
+    }
+
     if (event.shiftKey) {
       // Multi-select with shift
       setSelectedNodes(prev => 
@@ -306,9 +314,11 @@ export default function DragDropCanvas({
     event.stopPropagation()
     
     if (node.data?.type === 'file' && typeof onFileSelect === 'function' && typeof node.data.filePath === 'string') {
-      onFileSelect(node.id, node.data.filePath)
+      const previewable = ['.tsx','.jsx','.html','.css'].some(ext => node.data.filePath.endsWith(ext))
+      onFileSelect(node.id, node.data.filePath, previewable)
     }
   }, [onFileSelect])
+
 
   // Drag and drop file upload
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -390,17 +400,48 @@ export default function DragDropCanvas({
           </div>
           
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-gray-400 hover:text-white"
-              onClick={() => {
-                // Fit view - will implement with useReactFlow hook
-                console.log('Fit view clicked')
-              }}
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 bg-gray-800/80 hover:bg-gray-700"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  // Handle preview
+                  if (node.data?.type === 'file' && typeof onFileSelect === 'function') {
+                    onFileSelect(node.id, node.data.filePath + '?preview=true')
+                  }
+                }}
+              >
+                <Eye className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 bg-gray-800/80 hover:bg-gray-700"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (node.data?.type === 'file' && typeof onFileSelect === 'function') {
+                    onFileSelect(node.id, node.data.filePath, true)
+                  }
+                }}
+              >
+                <Eye className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 bg-gray-800/80 hover:bg-gray-700"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (node.data?.type === 'file' && typeof onFileSelect === 'function') {
+                    onFileSelect(node.id, node.data.filePath)
+                  }
+                }}
+              >
+                <Code2 className="h-3 w-3" />
+              </Button>
+
+
           </div>
         </div>
         

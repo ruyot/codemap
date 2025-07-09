@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import LandingPage from "@/components/landing-page"
 import CyberpunkAppShell from "@/components/design-app-shell"
+import { User } from "@supabase/supabase-js"
 
 export default function Home() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

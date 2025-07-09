@@ -26,8 +26,15 @@ interface CodeCanvasProps {
   }
 }
 
+interface UserFile {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+}
+
 // Get user files from localStorage
-const getUserFiles = () => {
+const getUserFiles = (): UserFile[] => {
   if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem('uploadedFiles')
@@ -81,7 +88,7 @@ const initialEdges = [
 
 export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
   const router = useRouter()
-  const [userFiles, setUserFiles] = useState<any[]>([])
+  const [userFiles, setUserFiles] = useState<UserFile[]>([])
   
   // Initialize with empty arrays but proper typing
   const initialNodes: Node[] = []
@@ -98,7 +105,7 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
     setUserFiles(files)
     
     if (files.length > 0) {
-      const fileNodes = files.map((file: any, index: number) => ({
+      const fileNodes: ModuleNode[] = files.map((file, index) => ({
         id: file.id,
         label: file.name,
         filePath: file.name,
@@ -112,7 +119,7 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
       
       // Generate simple edges connecting files (only if we have more than 1 file)
       if (fileNodes.length > 1) {
-        const generatedEdges = fileNodes.slice(1).map((file: any, index: number) => ({
+        const generatedEdges = fileNodes.slice(1).map((file, index) => ({
           id: `e${fileNodes[0].id}-${file.id}`,
           source: fileNodes[0].id,
           target: file.id,
@@ -220,7 +227,7 @@ export default function CodeCanvas({ selectedRepo }: CodeCanvasProps) {
   useEffect(() => {
     const files = getUserFiles()
     if (files.length > 0 && selectedRepo) {
-      const fileNodes = files.map((file: any) => ({
+      const fileNodes: ModuleNode[] = files.map((file) => ({
         id: file.id,
         label: file.name,
         filePath: file.name,

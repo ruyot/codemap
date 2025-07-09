@@ -1,4 +1,4 @@
-"use client"
+use client
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -41,13 +41,39 @@ import {
   Menu,
   X
 } from "lucide-react"
+import { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface CyberpunkAppShellProps {
   onSignOut: () => void
 }
 
+interface Project {
+  id: string;
+  name: string;
+  fileCount: number;
+  uploadedAt: string;
+  branch: string;
+}
+
+interface UserFile {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  content: string | null;
+  lastModified: string;
+  projectId: string;
+  userId: string;
+}
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
+
 // Real user data will be loaded from localStorage and API
-const getStoredProjects = () => {
+const getStoredProjects = (): Project[] => {
   if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem('uploadedProjects')
@@ -57,7 +83,7 @@ const getStoredProjects = () => {
   }
 }
 
-const getStoredFiles = () => {
+const getStoredFiles = (): UserFile[] => {
   if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem('uploadedFiles')
@@ -69,16 +95,16 @@ const getStoredFiles = () => {
 
 export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps) {
   const router = useRouter()
-  const [userProjects, setUserProjects] = useState<any[]>([])
-  const [userFiles, setUserFiles] = useState<any[]>([])
-  const [selectedRepo, setSelectedRepo] = useState<any>(null)
+  const [userProjects, setUserProjects] = useState<Project[]>([])
+  const [userFiles, setUserFiles] = useState<UserFile[]>([])
+  const [selectedRepo, setSelectedRepo] = useState<Project | null>(null)
   const [chatInput, setChatInput] = useState("")
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [activeTab, setActiveTab] = useState("files")
   const [isAIEnabled, setIsAIEnabled] = useState(true)
   const [notifications, setNotifications] = useState(0)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   const [showTerminal, setShowTerminal] = useState(false)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const [showFileUpload, setShowFileUpload] = useState(false)
@@ -103,8 +129,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
 
     // Initialize AI assistant with welcome message if no messages exist
     if (messages.length === 0) {
-      const welcomeMessage = {
-        role: "assistant" as const,
+      const welcomeMessage: Message = {
+        role: "assistant",
         content: files.length > 0 
           ? "Welcome back! I can see you have uploaded files. I can help you analyze your code, suggest improvements, create new files, and fix bugs. What would you like to work on?"
           : "Welcome to your AI coding assistant! Please upload some files first, or I can help you create new files. What would you like to build today?",
@@ -143,8 +169,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
   const handleSendMessage = async () => {
     if (!chatInput.trim() || !isAIEnabled) return
 
-    const userMessage = {
-      role: "user" as const,
+    const userMessage: Message = {
+      role: "user",
       content: chatInput,
       timestamp: new Date()
     }
@@ -164,43 +190,51 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
       let content = "// New file created by AI Assistant\n"
       const contentMatch = currentInput.match(/(?:with|containing|that says?)\s+(.+)/i)
       if (contentMatch) {
-        content = contentMatch[1].replace(/["']/g, '')
+        content = contentMatch[1].replace(/[\"\']/g, '')
       }
       
       // Determine file type and add appropriate content
       const extension = fileName.split('.').pop()?.toLowerCase()
       switch (extension) {
         case 'js':
-        case 'jsx':
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `// ${fileName}\nconsole.log('Hello from ${fileName}');`
+        case 'jsx': {
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `// ${fileName}\nconsole.log('Hello from ${fileName}');`
           break
+        }
         case 'ts':
-        case 'tsx':
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `// ${fileName}\nconsole.log('Hello from ${fileName}');`
+        case 'tsx': {
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `// ${fileName}\nconsole.log('Hello from ${fileName}');`
           break
-        case 'py':
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `# ${fileName}\nprint('Hello from ${fileName}')`
+        }
+        case 'py': {
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `# ${fileName}\nprint('Hello from ${fileName}')`
           break
-        case 'java':
+        }
+        case 'java': {
           const className = fileName.replace('.java', '')
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `public class ${className} {\n    public static void main(String[] args) {\n        System.out.println("Hello from ${className}");\n    }\n}`
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `public class ${className} {\n    public static void main(String[] args) {\n        System.out.println(\"Hello from ${className}\");\n    }\n}`
           break
-        case 'html':
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `<!DOCTYPE html>\n<html>\n<head>\n    <title>${fileName}</title>\n</head>\n<body>\n    <h1>Hello World</h1>\n</body>\n</html>`
+        }
+        case 'html': {
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `<!DOCTYPE html>\n<html>\n<head>\n    <title>${fileName}</title>\n</head>\n<body>\n    <h1>Hello World</h1>\n</body>\n</html>`
           break
-        case 'css':
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `/* ${fileName} */\nbody {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n}`
+        }
+        case 'css': {
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `/* ${fileName} */\nbody {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n}`
           break
-        case 'md':
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `# ${fileName.replace('.md', '')}\n\nHello world`
+        }
+        case 'md': {
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `# ${fileName.replace('.md', '')}\n\nHello world`
           break
-        default:
-          content = contentMatch ? contentMatch[1].replace(/["']/g, '') : `Hello world`
+        }
+        default: {
+          content = contentMatch ? contentMatch[1].replace(/[\"\']/g, '') : `Hello world`
+        }
       }
 
       try {
         // Create the file
-        const newFile = {
+        const newFile: UserFile = {
           id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: fileName,
           content: content,
@@ -220,7 +254,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
 
         // Create project if none exists
         if (userProjects.length === 0) {
-          const project = {
+          const project: Project = {
             id: `project_${Date.now()}`,
             name: 'My Project',
             fileCount: 1,
@@ -232,8 +266,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
           localStorage.setItem('uploadedProjects', JSON.stringify([project]))
         }
 
-        const successMessage = {
-          role: "assistant" as const,
+        const successMessage: Message = {
+          role: "assistant",
           content: `✅ Successfully created ${fileName}! The file has been added to your project. You can now:\n\n• Click on the file in the Files tab to edit it\n• Ask me to modify or add more content\n• Create additional files\n\nWhat would you like to do next?`,
           timestamp: new Date()
         }
@@ -242,8 +276,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
         return
       } catch (error) {
         console.error('File creation error:', error)
-        const errorMessage = {
-          role: "assistant" as const,
+        const errorMessage: Message = {
+          role: "assistant",
           content: `❌ Sorry, I couldn't create the file ${fileName}. Please try again.`,
           timestamp: new Date()
         }
@@ -259,8 +293,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
       currentInput.toLowerCase().includes('build') ||
       currentInput.toLowerCase().includes('new file')
     )) {
-      const helpMessage = {
-        role: "assistant" as const,
+      const helpMessage: Message = {
+        role: "assistant",
         content: "I'd be happy to help you create files! To create a file, just tell me:\n\n**\"Create a file called [filename]\"**\n\nFor example:\n• \"Create a file called app.js\"\n• \"Create a file called index.html\"\n• \"Create a file called readme.md and say hello world\"\n\nI can create files in many languages: JavaScript, TypeScript, Python, Java, HTML, CSS, and more!",
         timestamp: new Date()
       }
@@ -295,8 +329,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
 
       const result = await response.json()
       
-      const aiMessage = {
-        role: "assistant" as const,
+      const aiMessage: Message = {
+        role: "assistant",
         content: result.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that request. Please try again.",
         timestamp: new Date()
       }
@@ -304,8 +338,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
       setMessages(prev => [...prev, aiMessage])
     } catch (error) {
       console.error('AI response error:', error)
-      const errorMessage = {
-        role: "assistant" as const,
+      const errorMessage: Message = {
+        role: "assistant",
         content: "I'm experiencing some technical difficulties. Please try again later.",
         timestamp: new Date()
       }
@@ -400,7 +434,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
           icon={<Folder className="h-4 w-4" />}
           className="bg-gradient-to-b from-gray-800 to-gray-900 border-r border-gray-700"
         >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <Tabs value="files" onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="bg-gray-800/50 border-b border-gray-700 rounded-none justify-start px-4 py-2">
               <TabsTrigger value="repos" className="data-[state=active]:bg-blue-600/20 data-[state=active]:text-blue-400">
                 <Folder className="h-4 w-4 mr-2" />
@@ -420,7 +454,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
               <ScrollArea className="h-full p-4">
                 <div className="space-y-3">
                   {userProjects.length > 0 ? (
-                    userProjects.map((project: any) => (
+                    userProjects.map((project) => (
                       <Card
                         key={project.id}
                         className={`cursor-pointer transition-all duration-300 hover:scale-105 ${
@@ -475,7 +509,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                   
                   {userFiles.length > 0 ? (
                     <div className="space-y-2">
-                      {userFiles.map((file: any) => (
+                      {userFiles.map((file) => (
                         <Card
                           key={file.id}
                           className="cursor-pointer transition-all duration-300 hover:scale-105 bg-gray-800/50 border-gray-600 hover:bg-gray-700/50 hover:border-gray-500"
@@ -702,13 +736,16 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                 
                 // Convert FileList to Array and process uploaded files
                 const filesArray = Array.from(files)
-                const processedFiles = filesArray.map((file: File) => ({
+                const processedFiles: UserFile[] = filesArray.map((file: File) => ({
                   id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   name: file.name,
                   type: file.type,
                   size: file.size,
                   uploadedAt: new Date().toISOString(),
-                  content: null // Will be populated when file is opened
+                  content: null, // Will be populated when file is opened
+                  lastModified: new Date().toISOString(),
+                  projectId: selectedRepo?.id || 'default',
+                  userId: user?.id || 'anonymous'
                 }))
 
                 // Update state
@@ -720,7 +757,7 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
 
                 // Create/update project
                 const projectId = `project_${Date.now()}`
-                const project = {
+                const project: Project = {
                   id: projectId,
                   name: files.length > 1 ? `Project ${new Date().toLocaleDateString()}` : files[0].name.split('.')[0],
                   fileCount: files.length,
@@ -732,8 +769,8 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
                 localStorage.setItem('uploadedProjects', JSON.stringify([...userProjects, project]))
 
                 // Update AI assistant with success message
-                const successMessage = {
-                  role: "assistant" as const,
+                const successMessage: Message = {
+                  role: "assistant",
                   content: `Great! I've successfully uploaded ${files.length} file(s). I can now help you analyze your code, suggest improvements, create new files, and fix bugs. What would you like to work on?`,
                   timestamp: new Date()
                 }

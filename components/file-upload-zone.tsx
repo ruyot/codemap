@@ -177,7 +177,7 @@ export default function FileUploadZone({
           size: file.size,
           lastModified: new Date(file.lastModified).toISOString(),
           content: content,
-          webkitRelativePath: (file as any).webkitRelativePath || file.name
+          webkitRelativePath: (file as File & { webkitRelativePath: string }).webkitRelativePath || file.name
         })
 
         // Mark as success
@@ -351,7 +351,7 @@ export default function FileUploadZone({
           id="folder-input"
           type="file"
           multiple
-          {...({ webkitdirectory: "" } as any)}
+          {...({ webkitdirectory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
           className="hidden"
           onChange={handleFileInput}
         />

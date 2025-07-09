@@ -51,7 +51,7 @@ export default function GlobalSearch({ open, onOpenChange, files = mockFiles, on
     }
     
     // Extract module ID or use file path to generate one
-    const moduleId = file.replace(/[\/\.]/g, '_')
+    const moduleId = file.replace(/[/.]/g, '_')
     
     // Navigate to the module route
     router.push(`/module/${moduleId}`)

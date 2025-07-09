@@ -1,4 +1,4 @@
-"use client"
+use client"
 
 import { useState, useEffect } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -28,24 +28,24 @@ interface Message {
   }
 }
 
-export default function FileAIChat({ 
-  codeContext, 
-  fileName, 
-  onFileCreated, 
+export default function FileAIChat({
+  codeContext,
+  fileName,
+  onFileCreated,
   projectId = 'default',
-  fileManager 
+  fileManager
 }: FileAIChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [currentUserId, setCurrentUserId] = useState<string>('anonymous')
   const [pendingClarification, setPendingClarification] = useState<null | { code: string, type: string }>(null)
   const [clarificationPrompt, setClarificationPrompt] = useState<string>("")
-  
+
   const { suggestFix, loading: isLoading, error } = useBlackbox({
-    onError: (error) => {
+    onError: (err: Error) => {
       const errorMessage: Message = {
         role: "assistant",
-        content: `Error: ${error.message}. Please try again later.`,
+        content: `Error: ${err.message}. Please try again later.`,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -90,7 +90,7 @@ export default function FileAIChat({
       if (fileManager) {
         // Use file manager if available
         const newFile = await fileManager.createFile(fileName, type, content)
-        
+
         // Notify parent component
         if (onFileCreated) {
           onFileCreated({
@@ -99,7 +99,7 @@ export default function FileAIChat({
             type: newFile.language || 'text'
           })
         }
-        
+
         return newFile
       } else {
         // Fallback to API
@@ -119,7 +119,7 @@ export default function FileAIChat({
         }
 
         const result = await response.json()
-        
+
         // Notify parent component
         if (onFileCreated) {
           onFileCreated({
@@ -131,9 +131,9 @@ export default function FileAIChat({
 
         return result
       }
-    } catch (error) {
-      console.error('Error creating file:', error)
-      throw error
+    } catch (err) {
+      console.error('Error creating file:', err)
+      throw err
     }
   }
 
@@ -156,7 +156,7 @@ export default function FileAIChat({
         const [, type, code] = codeMatch
         // Try to find a file name in the text before the code block
         const before = content.slice(0, codeMatch.index)
-        const fileNameMatch = before.match(/(?:file(?: name)?(?: called)?|create|add|make)[^\n]*([\w\-]+\.[\w]+)/i)
+        const fileNameMatch = before.match(/(?:file(?: name)?(?: called)?|create|add|make)[^\n]*([\w-]+\.[\w]+)/i)
         const name = fileNameMatch ? fileNameMatch[1] : `ai-generated-${i}.${type}`
         files.push({ name, content: code.trim(), type })
         i++
@@ -171,7 +171,7 @@ export default function FileAIChat({
       if (fileManager) {
         const uploadedFiles = await fileManager.uploadFiles(files)
         const fileList = uploadedFiles.map(f => f.name).join(', ')
-        
+
         const uploadMessage: Message = {
           role: "assistant",
           content: `✅ **Files uploaded successfully!**\n\nUploaded: ${fileList}\n\nThe files have been added to your project and are now available in the file explorer.`,
@@ -183,10 +183,10 @@ export default function FileAIChat({
         }
         setMessages(prev => [...prev, uploadMessage])
       }
-    } catch (error) {
+    } catch (err) {
       const errorMessage: Message = {
         role: "assistant",
-        content: `❌ **Upload failed**: ${error}`,
+        content: `❌ **Upload failed**: ${err}`,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -198,7 +198,7 @@ export default function FileAIChat({
     try {
       if (fileManager) {
         fileManager.downloadFile(file)
-        
+
         const downloadMessage: Message = {
           role: "assistant",
           content: `✅ **File downloaded**: \`${file.name}\`\n\nThe file has been downloaded to your computer.`,
@@ -206,10 +206,10 @@ export default function FileAIChat({
         }
         setMessages(prev => [...prev, downloadMessage])
       }
-    } catch (error) {
+    } catch (err) {
       const errorMessage: Message = {
         role: "assistant",
-        content: `❌ **Download failed**: ${error}`,
+        content: `❌ **Download failed**: ${err}`,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
@@ -220,16 +220,16 @@ export default function FileAIChat({
   const handleClarification = async (clarification: string) => {
     if (!pendingClarification) return
     // Ask the AI for the file name or intent
-    const followupPrompt = `The user previously asked for code, but you did not specify a file name. Here is the code:\n\n\`\`\`${pendingClarification.type}\n${pendingClarification.code}\n\`\`\`\n\nUser clarification: ${clarification}\n\nPlease respond with the file name and code in the format:\n\`\`\`language:filename.ext\ncode here\n\`\`\``
+    const followupPrompt = `The user previously asked for code, but you did not specify a file name. Here is the code:\n\n\`\`\`${pendingClarification.type}\n${pendingClarification.code}\n\`\`\`\n\nUser clarification: ${clarification}\n\nPlease respond with the file name and code in the format:\n\n\`\`\`language:filename.ext\ncode here\n\`\`\``
     const result = await suggestFix(fileName, followupPrompt, [])
     if (result && result.choices && result.choices[0]?.message?.content) {
       const aiContent = result.choices[0].message.content
       const filesToCreateOrUpdate = parseAIResponse(aiContent)
       let finalContent = aiContent
-      let metadata: Message['metadata'] = {}
+      const metadata: Message['metadata'] = {}
       if (filesToCreateOrUpdate.length > 0) {
         for (const file of filesToCreateOrUpdate) {
-          let fileNode = fileManager?.getFiles().flat().find(f => f.name === file.name)
+          const fileNode = fileManager?.getFiles().flat().find(f => f.name === file.name)
           if (fileNode) {
             await fileManager?.saveFile(fileNode.id, file.content)
             finalContent += `\n\n✏️ **Updated file**: \`${file.name}\``
@@ -254,7 +254,7 @@ export default function FileAIChat({
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
-    
+
     if (pendingClarification) {
       // Handle clarification follow-up
       await handleClarification(input)
@@ -275,15 +275,15 @@ export default function FileAIChat({
       const prompt = `You are an expert coding assistant.\n\nUser request: ${userMessage.content}\n\nIf the user asks for code, always return the code in a code block. If you know the file name, include it in the format:\n\n\`\`\`language:filename.ext\ncode here\n\`\`\`\n\nIf you don't know the file name, just return the code in a code block.\n\nIf the code is for an existing file, say so in plain text before the code block.\nIf the code is for a new file, say so in plain text before the code block.\n\nIf the user asks for multiple files, return each in a separate code block.\n\nAlways use the correct file extension for the language.`
 
       const result = await suggestFix(fileName, prompt, [])
-      
+
       if (result && result.choices && result.choices[0]?.message?.content) {
         const aiContent = result.choices[0].message.content
         const filesToCreateOrUpdate = parseAIResponse(aiContent)
         let finalContent = aiContent
-        let metadata: Message['metadata'] = {}
+        const metadata: Message['metadata'] = {}
         if (filesToCreateOrUpdate.length > 0) {
           for (const file of filesToCreateOrUpdate) {
-            let fileNode = fileManager?.getFiles().flat().find(f => f.name === file.name)
+            const fileNode = fileManager?.getFiles().flat().find(f => f.name === file.name)
             if (fileNode) {
               await fileManager?.saveFile(fileNode.id, file.content)
               finalContent += `\n\n✏️ **Updated file**: \`${file.name}\``
@@ -319,9 +319,9 @@ export default function FileAIChat({
       } else {
         throw new Error("Invalid response format from AI")
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
       // Error handling is done in the hook's onError callback
-      console.error('Chat error:', error)
+      console.error('Chat error:', err)
     }
   }
 

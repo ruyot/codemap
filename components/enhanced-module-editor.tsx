@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Editor } from '@monaco-editor/react'
+import { Editor, OnMount } from '@monaco-editor/react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,9 +10,9 @@ import { Badge } from '@/components/ui/badge'
 import { FileText, Bug, Sparkles, History, Eye, Wand2, MessageSquare, FolderOpen } from 'lucide-react'
 import FileAIChat from './file-ai-chat'
 import FileExplorer from './file-explorer'
+import PreviewPanel from './preview-panel'
 import { FileManager, FileNode } from '@/lib/file-manager'
 
-// Mock data and types for now
 interface Module {
   language?: string;
 }
@@ -26,7 +26,6 @@ interface Error {
 
 interface Suggestion {
   explanation?: string;
-  // Add other properties of suggestion
 }
 
 interface EnhancedModuleEditorProps {
@@ -38,6 +37,7 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
   const [showPreview, setShowPreview] = useState(true);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(true);
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState('editor');
   const [errors, setErrors] = useState<Error[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -54,14 +54,12 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
       const manager = new FileManager(moduleId);
       setFileManager(manager);
       
-      // Load initial files
       const loadFiles = async () => {
         await manager.loadFiles();
         const loadedFiles = manager.getFiles();
         setFiles(loadedFiles);
-        // If initialFileId is set, find and select that file
+        
         if (initialFileId) {
-          // Recursively search for the file in the tree
           const findFileById = (files: FileNode[]): FileNode | null => {
             for (const file of files) {
               if (file.id === initialFileId) return file;
@@ -83,22 +81,35 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
     }
   }, [moduleId, initialFileId]);
 
+  useEffect(() => {
+    if (currentFile?.content) {
+      setCode(currentFile.content);
+    }
+  }, [currentFile]);
+
   const applySuggestion = (suggestion: Suggestion) => {
     console.log('Applying suggestion:', suggestion);
   };
 
   const handleFileCreated = (file: { name: string; content: string; type: string }) => {
     if (fileManager) {
-      // Refresh file list
       setFiles([...fileManager.getFiles()]);
     }
     console.log('New file created:', file);
   };
 
-  const handleFileSelect = (file: FileNode) => {
-    setCurrentFile(file);
-    if (file.content) {
-      setCode(file.content);
+  const handleFileSelect = async (file: FileNode) => {
+    if (file.type === 'file') {
+      if (fileManager) {
+        const freshFile = await fileManager.getFile(file.id);
+        if (freshFile) {
+          setCurrentFile(freshFile);
+          setCode(freshFile.content || '');
+          return;
+        }
+      }
+      setCurrentFile(file);
+      setCode(file.content || '');
     }
   };
 
@@ -120,7 +131,6 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
         await fileManager.deleteFile(fileId);
         setFiles([...fileManager.getFiles()]);
         
-        // Clear current file if it was deleted
         if (currentFile?.id === fileId) {
           setCurrentFile(null);
           setCode('// No file selected');
@@ -137,7 +147,6 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
         await fileManager.renameFile(fileId, newName);
         setFiles([...fileManager.getFiles()]);
         
-        // Update current file if it was renamed
         if (currentFile?.id === fileId) {
           setCurrentFile({ ...currentFile, name: newName });
         }
@@ -152,7 +161,6 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
       try {
         const uploadedFiles = await fileManager.uploadFiles(files);
         setFiles([...fileManager.getFiles()]);
-        // Optionally, open the first uploaded file in the editor
         if (uploadedFiles.length > 0) {
           setCurrentFile(uploadedFiles[0]);
           setCode(uploadedFiles[0].content || '');
@@ -184,9 +192,12 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
     }
   };
 
+  const handleEditorMount: OnMount = (editor) => {
+    editorRef.current = editor;
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Header */}
       <div className="flex items-center justify-between p-2 border-b border-gray-700 bg-gray-800">
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold">Enhanced Module Editor</h2>
@@ -215,7 +226,16 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
             <MessageSquare className="h-4 w-4 mr-2" />
             AI Chat
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setShowPreview(!showPreview)}>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => {
+              if (isPreviewFullscreen) {
+                setIsPreviewFullscreen(false);
+              }
+              setShowPreview(!showPreview);
+            }}
+          >
             <Eye className="h-4 w-4 mr-2" />
             {showPreview ? 'Hide Preview' : 'Show Preview'}
           </Button>
@@ -224,9 +244,8 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
           </Button>
         </div>
       </div>
-      {/* Main Content */}
+
       <div className="flex-1 flex overflow-hidden">
-        {/* File Explorer */}
         {showFileExplorer && (
           <div className="w-64 border-r border-gray-700">
             <FileExplorer
@@ -242,7 +261,6 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
           </div>
         )}
 
-        {/* Editor Panel */}
         <div className={`${showPreview ? 'w-1/2' : 'w-full'} ${showAIChat ? 'w-1/3' : ''} flex flex-col`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="bg-gray-800 border-b border-gray-700 rounded-none justify-start px-6">
@@ -271,7 +289,7 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
                   language={currentFile?.language || module.language || "typescript"}
                   value={code}
                   onChange={(value) => setCode(value || "")}
-                  onMount={(editor) => { editorRef.current = editor as any }}
+                  onMount={handleEditorMount}
                   theme="vs-dark"
                   options={{
                     fontSize: 14,
@@ -384,7 +402,6 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
           </Tabs>
         </div>
 
-        {/* AI Chat Panel */}
         {showAIChat && (
           <div className="w-1/3 border-l border-gray-700">
             <FileAIChat
@@ -397,24 +414,17 @@ const EnhancedModuleEditor = ({ moduleId, initialFileId }: EnhancedModuleEditorP
           </div>
         )}
 
-        {/* Preview Panel */}
         {showPreview && (
-          <div className="w-1/2 border-l border-gray-700 bg-gray-800 overflow-auto">
-            <div className="p-4 border-b border-gray-700">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                Live Preview
-              </h3>
-            </div>
-            <div className="p-4">
-              <div className="bg-white rounded-lg p-4 text-black min-h-[400px]">
-                <p className="text-gray-600">Preview functionality coming soon...</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  This will show a live preview of your React component
-                </p>
-              </div>
-            </div>
-          </div>
+          <PreviewPanel
+            content={code}
+            fileType={currentFile?.name.split('.').pop() || ''}
+            onRefresh={() => {
+              setCode(code => code + ' ');
+              setTimeout(() => setCode(code => code.trimEnd()), 10);
+            }}
+            isFullscreen={isPreviewFullscreen}
+            onToggleFullscreen={() => setIsPreviewFullscreen(!isPreviewFullscreen)}
+          />
         )}
       </div>
     </div>

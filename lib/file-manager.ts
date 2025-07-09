@@ -14,6 +14,19 @@ export interface FileNode {
   createdAt?: Date
 }
 
+interface SupabaseFile {
+  id: string;
+  name: string;
+  type: 'file' | 'directory';
+  path: string;
+  content: string;
+  language: string;
+  project_id: string;
+  parent_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export class FileManager {
   private files: FileNode[] = []
   private projectId: string
@@ -34,7 +47,7 @@ export class FileManager {
 
       if (error) throw error
 
-      this.files = this.buildFileTree(data || [])
+      this.files = this.buildFileTree(data as SupabaseFile[] || [])
     } catch (error) {
       console.error('Error loading files:', error)
       // Initialize with default files if loading fails
@@ -43,7 +56,7 @@ export class FileManager {
   }
 
   // Build hierarchical file tree from flat array
-  private buildFileTree(files: any[]): FileNode[] {
+  private buildFileTree(files: SupabaseFile[]): FileNode[] {
     const fileMap = new Map<string, FileNode>()
     const rootFiles: FileNode[] = []
 

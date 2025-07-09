@@ -66,7 +66,7 @@ interface GitOperation {
 }
 
 // Custom Git Node Component
-const GitBranchNode = React.memo(({ data, selected }: { data: any, selected: boolean }) => {
+const GitBranchNode = React.memo(({ data, selected }: { data: GitBranch, selected: boolean }) => {
   const [isHovered, setIsHovered] = useState(false)
 
   const getStatusColor = (status: string) => {

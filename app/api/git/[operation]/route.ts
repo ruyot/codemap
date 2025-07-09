@@ -151,7 +151,6 @@ To https://github.com/${owner}/${repo}.git
 }
 
 async function handleStatus(repo: string, owner: string, branch: string) {
-  try {
     // Get repository info and recent commits to simulate status
     const repoInfo = await octokit.rest.repos.get({ owner, repo })
     const commits = await octokit.rest.repos.listCommits({ 
@@ -167,13 +166,9 @@ Last commit: ${commits.data[0]?.sha.substring(0, 7) || 'unknown'}
 Status: Clean working directory`
 
     return NextResponse.json({ result })
-  } catch (error) {
-    throw error
-  }
 }
 
 async function handleDiff(repo: string, owner: string, branch: string) {
-  try {
     const commits = await octokit.rest.repos.listCommits({ 
       owner, 
       repo, 
@@ -199,9 +194,6 @@ Additions: +${comparison.data.ahead_by || 0}
 Deletions: -${comparison.data.behind_by || 0}`
 
     return NextResponse.json({ result })
-  } catch (error) {
-    throw error
-  }
 }
 
 async function handleCommit(repo: string, owner: string, branch: string) {
@@ -213,7 +205,6 @@ async function handleCommit(repo: string, owner: string, branch: string) {
 }
 
 async function handleBranch(repo: string, owner: string) {
-  try {
     const branches = await octokit.rest.repos.listBranches({ owner, repo })
     
     const result = branches.data
@@ -221,9 +212,6 @@ async function handleBranch(repo: string, owner: string) {
       .join('\n')
     
     return NextResponse.json({ result })
-  } catch (error) {
-    throw error
-  }
 }
 
 async function handleMerge(repo: string, owner: string, branch: string) {
@@ -235,7 +223,6 @@ This would merge changes in a real implementation`
 }
 
 async function handleLog(repo: string, owner: string, branch: string) {
-  try {
     const commits = await octokit.rest.repos.listCommits({ 
       owner, 
       repo, 
@@ -252,9 +239,6 @@ Date:   ${commit.commit.author?.date}
       .join('\n\n')
 
     return NextResponse.json({ result })
-  } catch (error) {
-    throw error
-  }
 }
 
 async function handleCheckout(repo: string, owner: string, branch: string) {

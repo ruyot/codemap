@@ -52,10 +52,11 @@ export default function AuthModal({ open, onOpenChange, onSuccess }: AuthModalPr
 
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during sign in."
       toast({
         title: "Sign in failed",
-        description: error.message || "An error occurred during sign in.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -96,10 +97,11 @@ export default function AuthModal({ open, onOpenChange, onSuccess }: AuthModalPr
       })
 
       onOpenChange(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during sign up."
       toast({
         title: "Sign up failed",
-        description: error.message || "An error occurred during sign up.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -118,10 +120,11 @@ export default function AuthModal({ open, onOpenChange, onSuccess }: AuthModalPr
       })
 
       if (error) throw error
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during GitHub sign in."
       toast({
         title: "GitHub sign in failed",
-        description: error.message || "An error occurred during GitHub sign in.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -140,10 +143,11 @@ export default function AuthModal({ open, onOpenChange, onSuccess }: AuthModalPr
       })
 
       if (error) throw error
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred during Google sign in."
       toast({
         title: "Google sign in failed",
-        description: error.message || "An error occurred during Google sign in.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

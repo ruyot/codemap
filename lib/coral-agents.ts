@@ -4,7 +4,7 @@
 export interface CoralMessage {
   id: string
   type: 'ui-gen' | 'error-flag' | 'prompt-refine' | 'code-fix'
-  payload: any
+  payload: Record<string, unknown>
   timestamp: Date
   threadId: string
 }
@@ -67,7 +67,7 @@ class CoralAgentManager {
     console.log(`Registered Coral agent: ${agent.name}`)
   }
 
-  async routeMessage(message: CoralMessage): Promise<any> {
+  async routeMessage(message: CoralMessage): Promise<Record<string, unknown>> {
     const agent = this.agents.get(message.type)
     if (!agent) {
       throw new Error(`No agent registered for type: ${message.type}`)
@@ -102,15 +102,20 @@ class CoralAgentManager {
 
   async orchestrateWorkflow(
     userRequest: string, 
-    context: any
+    context: Record<string, unknown>
   ): Promise<{
-    uiSchema?: any
-    errors?: any[]
+    uiSchema?: Record<string, unknown>
+    errors?: Record<string, unknown>[]
     refinedPrompt?: string
-    fixes?: any[]
+    fixes?: Record<string, unknown>[]
   }> {
     const threadId = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const results: any = {}
+    const results: { 
+      uiSchema?: Record<string, unknown>; 
+      errors?: Record<string, unknown>[]; 
+      refinedPrompt?: string; 
+      fixes?: Record<string, unknown>[] 
+    } = {}
 
     try {
       // Step 1: Refine the user prompt
@@ -123,7 +128,7 @@ class CoralAgentManager {
       }
       
       const refinedPrompt = await this.routeMessage(promptMessage)
-      results.refinedPrompt = refinedPrompt.prompt
+      results.refinedPrompt = refinedPrompt.prompt as string
 
       // Step 2: Generate UI schema (parallel with error detection)
       const uiGenPromise = this.routeMessage({
@@ -152,8 +157,8 @@ class CoralAgentManager {
       // Wait for parallel operations
       const [uiResult, errorResult] = await Promise.all([uiGenPromise, errorFlagPromise])
       
-      results.uiSchema = uiResult.schema
-      results.errors = errorResult.flags
+      results.uiSchema = uiResult.schema as Record<string, unknown>
+      results.errors = errorResult.flags as Record<string, unknown>[]
 
       // Step 4: Apply autonomous fixes if errors found
       if (results.errors && results.errors.length > 0) {
@@ -169,7 +174,7 @@ class CoralAgentManager {
           threadId
         })
         
-        results.fixes = fixResult.fixes
+        results.fixes = fixResult.fixes as Record<string, unknown>[]
       }
 
       return results
@@ -194,7 +199,7 @@ export const coralManager = new CoralAgentManager()
 
 // Helper functions for specific agent interactions
 
-export async function generateUISchema(metadata: any): Promise<any> {
+export async function generateUISchema(metadata: Record<string, unknown>): Promise<Record<string, unknown>> {
   return coralManager.routeMessage({
     id: `ui-gen-${Date.now()}`,
     type: 'ui-gen',
@@ -204,7 +209,7 @@ export async function generateUISchema(metadata: any): Promise<any> {
   })
 }
 
-export async function flagErrors(code: string, filePath: string): Promise<any[]> {
+export async function flagErrors(code: string, filePath: string): Promise<Record<string, unknown>[]> {
   const result = await coralManager.routeMessage({
     id: `error-flag-${Date.now()}`,
     type: 'error-flag',
@@ -213,10 +218,10 @@ export async function flagErrors(code: string, filePath: string): Promise<any[]>
     threadId: `error-thread-${Date.now()}`
   })
   
-  return result.flags || []
+  return result.flags as Record<string, unknown>[] || []
 }
 
-export async function refinePrompt(userRequest: string, context?: any): Promise<string> {
+export async function refinePrompt(userRequest: string, context?: Record<string, unknown>): Promise<string> {
   const result = await coralManager.routeMessage({
     id: `prompt-refine-${Date.now()}`,
     type: 'prompt-refine',
@@ -225,10 +230,10 @@ export async function refinePrompt(userRequest: string, context?: any): Promise<
     threadId: `prompt-thread-${Date.now()}`
   })
   
-  return result.prompt || userRequest
+  return result.prompt as string || userRequest
 }
 
-export async function autonomousFix(filePath: string, code: string, errors: any[]): Promise<any> {
+export async function autonomousFix(filePath: string, code: string, errors: Record<string, unknown>[]): Promise<Record<string, unknown>> {
   return coralManager.routeMessage({
     id: `code-fix-${Date.now()}`,
     type: 'code-fix',

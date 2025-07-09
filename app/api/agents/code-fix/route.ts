@@ -5,6 +5,31 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN || 'mock-token'
 })
 
+interface CodeError {
+  type: string;
+  line: number;
+  message: string;
+}
+
+interface Fix {
+  action: 'replace' | 'comment' | 'suggest';
+  pattern?: RegExp | string;
+  replacement?: string;
+  explanation?: string;
+  line?: number;
+  comment?: string;
+  suggestion?: string;
+}
+
+interface GeneratedFix {
+  errorId: number;
+  type: string;
+  description: string;
+  fix: Fix;
+  confidence: number;
+  automated: boolean;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, thread } = await request.json()
@@ -47,12 +72,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateFixes(code: string, errors: any[], filePath: string) {
+async function generateFixes(code: string, errors: CodeError[], filePath: string): Promise<GeneratedFix[]> {
   // Mock Blackbox.ai fix generation
-  const fixes = []
+  const fixes: GeneratedFix[] = []
 
   for (const error of errors) {
-    let fix = null
+    let fix: Fix | null = null
 
     switch (error.type) {
       case 'style':
@@ -86,7 +111,7 @@ async function generateFixes(code: string, errors: any[], filePath: string) {
   return fixes
 }
 
-function generateStyleFix(error: any, code: string) {
+function generateStyleFix(error: CodeError, code: string): Fix | null {
   if (error.message.includes('optional chaining')) {
     return {
       action: 'replace',
@@ -108,7 +133,7 @@ function generateStyleFix(error: any, code: string) {
   return null
 }
 
-function generateBugFix(error: any, code: string) {
+function generateBugFix(error: CodeError, code: string): Fix {
   if (error.message.includes('undefined')) {
     return {
       action: 'replace',
@@ -126,7 +151,7 @@ function generateBugFix(error: any, code: string) {
   }
 }
 
-function generateSecurityFix(error: any, code: string) {
+function generateSecurityFix(error: CodeError, code: string): Fix {
   if (error.message.includes('injection')) {
     return {
       action: 'replace',
@@ -144,7 +169,7 @@ function generateSecurityFix(error: any, code: string) {
   }
 }
 
-function generatePerformanceFix(error: any, code: string) {
+function generatePerformanceFix(error: CodeError, code: string): Fix | null {
   if (error.message.includes('loop')) {
     return {
       action: 'suggest',
@@ -156,7 +181,7 @@ function generatePerformanceFix(error: any, code: string) {
   return null
 }
 
-function generateGenericFix(error: any, code: string) {
+function generateGenericFix(error: CodeError, code: string): Fix {
   return {
     action: 'comment',
     line: error.line,
@@ -165,24 +190,25 @@ function generateGenericFix(error: any, code: string) {
   }
 }
 
-async function applyFixes(code: string, fixes: any[]): Promise<string> {
+async function applyFixes(code: string, fixes: GeneratedFix[]): Promise<string> {
   let fixedCode = code
 
   for (const fix of fixes) {
     switch (fix.fix.action) {
       case 'replace':
         if (fix.fix.pattern && fix.fix.replacement) {
-          fixedCode = fixedCode.replace(fix.fix.pattern, fix.fix.replacement)
+          fixedCode = fixedCode.replace(new RegExp(fix.fix.pattern, 'g'), fix.fix.replacement)
         }
         break
       
-      case 'comment':
+      case 'comment': {
         const lines = fixedCode.split('\n')
-        if (fix.fix.line && fix.fix.line <= lines.length) {
+        if (fix.fix.line && fix.fix.comment && fix.fix.line <= lines.length) {
           lines.splice(fix.fix.line - 1, 0, fix.fix.comment)
           fixedCode = lines.join('\n')
         }
         break
+      }
       
       case 'suggest':
         // For suggestions, we just log them
@@ -221,7 +247,7 @@ async function runTests(filePath: string, code: string) {
   }
 }
 
-async function createPullRequest(filePath: string, fixedCode: string, fixes: any[]): Promise<string | null> {
+async function createPullRequest(filePath: string, fixedCode: string, fixes: GeneratedFix[]): Promise<string | null> {
   try {
     // This would create an actual PR in a real implementation
     const mockPrUrl = `https://github.com/user/repo/pull/${Math.floor(Math.random() * 1000)}`
@@ -248,10 +274,10 @@ async function createPullRequest(filePath: string, fixedCode: string, fixes: any
 export async function autonomousFixWorkflow(
   filePath: string, 
   code: string, 
-  errors: any[]
+  errors: CodeError[]
 ): Promise<{
   success: boolean
-  fixes: any[]
+  fixes: GeneratedFix[]
   prUrl?: string
   summary: string
 }> {

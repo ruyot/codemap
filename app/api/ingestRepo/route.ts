@@ -3,12 +3,12 @@ import { Octokit } from '@octokit/rest'
 
 // Mock Snowflake connection - replace with actual Snowflake SDK
 interface SnowflakeConnection {
-  execute: (query: string, binds?: any[]) => Promise<any>
+  execute: (query: string, binds?: (string | number | Date | null)[]) => Promise<{ success: boolean; rowCount: number }>
 }
 
 // Mock RelationalAI connection
 interface RelationalAIConnection {
-  createGraph: (name: string, data: any) => Promise<any>
+  createGraph: (name: string, data: { nodes: { id: string; type: string; properties: FileNode | FunctionNode }[]; edges: { from: string; to: string; type: string; weight: number }[] }) => Promise<{ id: string; nodeCount: number; edgeCount: number }>
 }
 
 interface RepoMetadata {
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 async function initializeSnowflake(): Promise<SnowflakeConnection> {
   // Mock implementation - replace with actual Snowflake connection
   return {
-    execute: async (query: string, binds?: any[]) => {
+    execute: async (query: string, binds?: (string | number | Date | null)[]) => {
       console.log('Snowflake Query:', query, binds)
       return { success: true, rowCount: binds?.length || 0 }
     }
@@ -133,7 +133,7 @@ async function initializeSnowflake(): Promise<SnowflakeConnection> {
 async function initializeRelationalAI(): Promise<RelationalAIConnection> {
   // Mock implementation - replace with actual RelationalAI connection
   return {
-    createGraph: async (name: string, data: any) => {
+    createGraph: async (name: string, data: { nodes: { id: string; type: string; properties: FileNode | FunctionNode }[]; edges: { from: string; to: string; type: string; weight: number }[] }) => {
       console.log('RelationalAI Graph:', name, data)
       return { 
         id: `graph-${Date.now()}`,
@@ -391,14 +391,14 @@ async function createRelationalAIGraph(
   relationalAI: RelationalAIConnection,
   data: {
     repo: string
-    nodes: any[]
+    nodes: (FileNode | FunctionNode)[]
     edges: DependencyEdge[]
   }
 ) {
   return await relationalAI.createGraph(`codemap-${data.repo.replace('/', '-')}`, {
     nodes: data.nodes.map(node => ({
-      id: node.path || node.name,
-      type: node.type || 'function',
+      id: (node as FileNode).path || (node as FunctionNode).name,
+      type: (node as FileNode).type || 'function',
       properties: node
     })),
     edges: data.edges.map(edge => ({
