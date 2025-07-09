@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
   Folder, 
   File, 
@@ -12,7 +12,9 @@ import {
   Trash2,
   Edit3,
   Copy,
-  Plus
+  Plus,
+  RefreshCw,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import { useSupabaseStorage } from "@/hooks/useSupabaseStorage"
 
 interface FileNode {
   id: string
@@ -35,6 +38,8 @@ interface FileNode {
   size?: number
   children?: FileNode[]
   isExpanded?: boolean
+  lastModified?: Date
+  createdAt?: Date
 }
 
 interface FileExplorerProps {
@@ -45,7 +50,9 @@ interface FileExplorerProps {
   onFileRename: (fileId: string, newName: string) => void
   onFileUpload: (files: FileList) => void
   onFileDownload: (file: FileNode) => void
+  onFileRefresh?: () => Promise<void>
   selectedFileId?: string
+  userId?: string
 }
 
 const FileExplorer: React.FC<FileExplorerProps> = ({
@@ -56,12 +63,30 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   onFileRename,
   onFileUpload,
   onFileDownload,
-  selectedFileId
+  onFileRefresh,
+  selectedFileId,
+  userId = ''
 }) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [renamingFile, setRenamingFile] = useState<string | null>(null)
   const [newFileName, setNewFileName] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { uploadFiles, downloadFile, loading } = useSupabaseStorage(userId)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    if (!onFileRefresh) return
+    
+    setIsRefreshing(true)
+    try {
+      await onFileRefresh()
+    } catch (error) {
+      console.error('Error refreshing files:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   const toggleFolder = (folderId: string) => {
     const newExpanded = new Set(expandedFolders)
@@ -123,7 +148,26 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
     
     const files = e.dataTransfer.files
     if (files.length > 0) {
-      onFileUpload(files)
+      handleUpload(files)
+    }
+  }
+
+  const handleUpload = async (fileList: FileList) => {
+    const filesArr = Array.from(fileList)
+    await uploadFiles(filesArr)
+  }
+
+  const handleDownload = async (file: FileNode) => {
+    try {
+      const blob = await downloadFile(file.name)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = file.name
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      // toast will be shown by hook
     }
   }
 
@@ -191,7 +235,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="bg-gray-800 border-gray-700">
-                <DropdownMenuItem onClick={() => onFileDownload(file)}>
+                <DropdownMenuItem onClick={() => handleDownload(file)}>
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </DropdownMenuItem>
@@ -247,6 +291,38 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
             >
               <Folder className="h-3 w-3" />
             </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={handleRefresh}
+              title="Refresh Files"
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => fileInputRef.current?.click()}
+              title="Upload Files"
+            >
+              <Upload className="h-3 w-3" />
+            </Button>
+            <input
+              type="file"
+              multiple
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              onChange={e => {
+                if (e.target.files) handleUpload(e.target.files)
+              }}
+            />
           </div>
         </div>
         
@@ -259,7 +335,10 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDrop={e => {
+            handleDrop(e)
+            if (e.dataTransfer.files) handleUpload(e.dataTransfer.files)
+          }}
         >
           <Upload className="h-4 w-4 mx-auto mb-1 text-gray-400" />
           <p className="text-xs text-gray-400">Drop files here</p>
@@ -283,4 +362,4 @@ const FileExplorer: React.FC<FileExplorerProps> = ({
   )
 }
 
-export default FileExplorer 
+export default FileExplorer
