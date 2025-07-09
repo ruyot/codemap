@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import CodeCanvas from "@/components/code-canvas"
 import GitCommandPalette from "@/components/git-command-palette"
 import { Folder, GitBranch, MessageSquare, LogOut, Terminal } from "lucide-react"
-import { useBlackboxChat } from "@/hooks/use-blackbox"
+import { useChat } from "@/hooks/useChat"
 import { Repository } from "@/types"
 
 interface AppShellProps {
@@ -52,12 +52,12 @@ const mockRepos: Repository[] = [
 
 export default function AppShell({ onSignOut }: AppShellProps) {
   const [selectedRepo, setSelectedRepo] = useState(mockRepos[0])
-  const [chatInput, setChatInput] = useState("")
   const [gitPaletteOpen, setGitPaletteOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
   const [openTabs, setOpenTabs] = useState([mockRepos[0]])
 
-  const blackboxChat = useBlackboxChat()
+  const { history, streamedReply, sendMessage } = useChat({ userFiles: [] })
+  const [chatInput, setChatInput] = useState("")
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -78,18 +78,8 @@ export default function AppShell({ onSignOut }: AppShellProps) {
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return
-
-    const message = chatInput
+    await sendMessage(chatInput)
     setChatInput("")
-
-    try {
-      await blackboxChat.sendMessage(message, {
-        repo: selectedRepo,
-        filePath: 'current-context'
-      })
-    } catch (error) {
-      console.error('Failed to send message:', error)
-    }
   }
 
   const openRepoInNewTab = (repo: Repository) => {
@@ -220,23 +210,21 @@ export default function AppShell({ onSignOut }: AppShellProps) {
 
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {blackboxChat.messages.map((message, index) => (
+                {history.slice(2).map((message, index) => (
                   <div
                     key={index}
                     className={`p-3 rounded-lg ${message.role === "user" ? "bg-blue-100 ml-4" : "bg-gray-100 mr-4"}`}
                   >
                     <p className="text-sm text-black">{message.content}</p>
-                    <span className="text-xs text-gray-600">
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
                   </div>
                 ))}
-                {blackboxChat.loading && (
+                {streamedReply && (
                   <div className="p-3 bg-gray-100 mr-4 rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-3 w-3 border-b border-blue-500"></div>
                       <span className="text-sm text-gray-600">Thinking...</span>
                     </div>
+                    <p className="text-sm text-black whitespace-pre-wrap">{streamedReply}</p>
                   </div>
                 )}
               </div>
@@ -250,11 +238,10 @@ export default function AppShell({ onSignOut }: AppShellProps) {
                   placeholder="Ask Blackbox.ai..."
                   className="bg-gray-50 border border-gray-300 text-black"
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                  disabled={blackboxChat.loading}
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={blackboxChat.loading || !chatInput.trim()}
+                  disabled={!chatInput.trim()}
                 >
                   Send
                 </Button>

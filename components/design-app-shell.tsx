@@ -42,6 +42,8 @@ import {
   X
 } from "lucide-react"
 import { User as SupabaseUser } from "@supabase/supabase-js"
+import { useChat } from "@/hooks/useChat"
+import { ChatPanel } from "@/components/ui/ChatPanel"
 
 interface CyberpunkAppShellProps {
   onSignOut: () => void
@@ -351,6 +353,10 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
+  // Instead, use the chat hook (initialized once per session)
+  const userFileNames = userFiles.map(f => f.name)
+  const chat = useChat({ userFiles: userFileNames })
+
   return (
     <div className="h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-black text-white flex flex-col overflow-hidden">
       {/* Cyberpunk Header */}
@@ -613,77 +619,11 @@ export default function CyberpunkAppShell({ onSignOut }: CyberpunkAppShellProps)
           icon={<Sparkles className="h-4 w-4" />}
           className="bg-gradient-to-b from-gray-800 to-gray-900 border-l border-gray-700"
         >
-          <div className="p-4 border-b border-gray-700 bg-gradient-to-r from-blue-600/10 to-purple-600/10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <Sparkles className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">AI Assistant</h3>
-                  <p className="text-xs text-gray-400">Powered by Blackbox.ai</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${isAIEnabled ? 'bg-green-400' : 'bg-gray-400'}`} />
-                <span className="text-xs text-gray-400">
-                  {isAIEnabled ? 'Online' : 'Offline'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <ScrollArea className="flex-1 p-4 h-[calc(100vh-300px)]">
-            <div className="space-y-4">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`p-3 rounded-lg transition-all duration-300 ${
-                    message.role === "user" 
-                      ? "bg-gradient-to-r from-blue-600/20 to-blue-500/20 ml-4 border border-blue-500/30" 
-                      : "bg-gradient-to-r from-gray-700/50 to-gray-600/50 mr-4 border border-gray-600/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    {message.role === "assistant" ? (
-                      <Sparkles className="h-3 w-3 text-purple-400" />
-                    ) : (
-                      <User className="h-3 w-3 text-blue-400" />
-                    )}
-                    <span className="text-xs text-gray-400">
-                      {formatTime(message.timestamp)}
-                    </span>
-                  </div>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-
-          <div className="p-4 border-t border-gray-700 bg-gray-800/50">
-            <div className="flex gap-2">
-              <Input
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask AI anything..."
-                className="bg-gray-700/50 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500/20"
-                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                disabled={!isAIEnabled}
-              />
-              <Button 
-                onClick={handleSendMessage} 
-                disabled={!isAIEnabled || !chatInput.trim()}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              >
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-            </div>
-            {!isAIEnabled && (
-              <p className="text-xs text-gray-500 mt-2">
-                AI Assistant is disabled. Enable it in the header to chat.
-              </p>
-            )}
-          </div>
+          <ChatPanel
+            history={chat.history}
+            streamedReply={chat.streamedReply}
+            sendMessage={chat.sendMessage}
+          />
         </MinimizablePanel>
       </div>
 

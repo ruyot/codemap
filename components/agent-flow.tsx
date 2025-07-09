@@ -65,7 +65,7 @@ export default function AgentFlow() {
       >
         <Controls className="bg-gray-800 border-gray-600" />
         <MiniMap className="bg-gray-800" />
-        <Background variant="dots" gap={12} size={1} color="#374151" />
+        <Background gap={12} size={1} color="#374151" />
       </ReactFlow>
     </div>
   )
