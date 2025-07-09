@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+  environment = { NODE_VERSION = "20" }
+
+[build.processing]
+  skip = ["headers", "redirects", "functions", "formDetection"]
+
+#[cache]
+#  # Cache node_modules and Next.js cache to speed up builds
+#  paths = [
+#    "node_modules",
+#    ".next/cache"
+#  ]
+
+[context.production.environment]
+  NODE_ENV = "production"
+  NETLIFY_SKIP_POSTPROCESSING = "true"
+
+[context.deploy-preview.environment]
+  NODE_ENV = "development"
