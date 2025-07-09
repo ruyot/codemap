@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
 import { bb } from "@/lib/blackbox"
+import { v4 as uuidv4 } from "uuid"
 
 export async function POST(request: Request) {
-  const { messages } = await request.json()
-  // Directly call the real Blackbox API via the client
-  const stream = await bb.chat.create({ model: "blackbox-chat-1", messages, stream: true })
+  const { prompt, agent = "VscodeAgent", sid } = await request.json()
+  // Generate a session id if not provided
+  const sessionId = sid || uuidv4()
+  const stream = await bb.chat.create({ sid: sessionId, prompt, agent })
   return new NextResponse(stream, {
     headers: {
-      "Content-Type": "text/event-stream",
+      "Content-Type": "application/json",
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
     },
